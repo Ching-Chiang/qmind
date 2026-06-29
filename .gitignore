@@ -33,6 +33,13 @@ data/cache/
 logs/
 *.log
 
+# Reports
+reports/
+
+# QMind database
+qmind.db
+qmind.sqlite3
+
 # Large files (papers are large)
 # references/papers/ is kept in git (they're reference materials)
 # but individual PDFs > 50MB should be gitignored

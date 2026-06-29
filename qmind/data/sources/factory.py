@@ -1,0 +1,35 @@
+"""
+数据源工厂 — 统一获取市场数据。
+"""
+
+from __future__ import annotations
+
+from qmind.graph.state import MarketData
+
+
+class DataSourceFactory:
+    """数据源工厂"""
+
+    async def fetch_market_data(
+        self,
+        symbol: str,
+        source: str = "auto",
+        interval: str = "1h",
+    ) -> MarketData:
+        """自动选择数据源获取市场数据"""
+        if source == "auto":
+            if symbol.endswith(("US", ".N", ".O")):
+                source = "yfinance"
+            elif symbol.endswith(("SZ", "SH", ".BJ")) or len(symbol) == 6:
+                source = "tushare"
+            else:
+                source = "yfinance"
+
+        if source == "yfinance":
+            from qmind.data.sources.yfinance_source import YFinanceSource
+            return await YFinanceSource().fetch_klines(symbol, interval=interval)
+        elif source == "tushare":
+            from qmind.data.sources.tushare_source import TushareSource
+            return await TushareSource().fetch_daily(symbol)
+        else:
+            raise ValueError(f"Unsupported data source: {source}")

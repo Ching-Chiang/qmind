@@ -1,0 +1,94 @@
+# === QMind — 量化交易多智能体系统 ===
+[build-system]
+requires = ["setuptools>=75.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "qmind"
+version = "0.1.0"
+description = "LLM-driven multi-agent quantitative trading system"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+  { name = "Ching" },
+]
+
+dependencies = [
+  # LLM SDKs
+  "anthropic>=0.70.0",
+  "openai>=1.70.0",
+
+  # LangGraph (only what we need)
+  "langgraph>=0.4.0",
+  "langgraph-checkpoint-sqlite>=2.0.0",
+
+  # Data & ML
+  "pandas>=2.2.0",
+  "numpy>=2.1.0",
+  "pydantic>=2.10.0",
+  "ta>=0.11.0",
+
+  # Async
+  "httpx>=0.28.0",
+  "websockets>=14.0",
+
+  # CLI
+  "rich>=13.9.0",
+  "click>=8.1.0",
+  "python-dotenv>=1.0.0",
+  "pyyaml>=6.0",
+
+  # Storage
+  "aiosqlite>=0.20.0",
+
+  # Encryption
+  "cryptography>=44.0.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["qmind*"]
+exclude = ["references*"]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-asyncio>=0.24.0",
+  "pytest-cov>=6.0",
+  "ruff>=0.9.0",
+  "mypy>=1.14.0",
+  "pre-commit>=4.0.0",
+]
+sources = [
+  "yfinance>=0.2.0",
+  "akshare>=1.16.0",
+  "tushare>=1.0.0",
+]
+cex = [
+  "ccxt>=4.4.0",
+]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 120
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "N", "W", "UP", "B", "SIM", "ARG", "PTH", "PD"]
+ignore = ["ARG001", "PTH123"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true
+allow_subclassing_any = true
+allow_untyped_decorators = true
+disable_error_code = ["type-arg", "override"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+filterwarnings = ["ignore::DeprecationWarning"]
