@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+*.egg
+.venv/
+venv/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Config with secrets
+config.toml
+config.local.toml
+*.key
+*.pem
+.env
+
+# Project specific
+data/cache/
+*.db
+*.sqlite
+logs/
+*.log
+
+# Large files (papers are large)
+# references/papers/ is kept in git (they're reference materials)
+# but individual PDFs > 50MB should be gitignored
+*.pdf
+!references/papers/*.pdf
+
+# Paper parsing intermediate artifacts (MCP mineru output)
+*_parsed/
+references/papers/*.txt
+references/papers/*.zip
+references/papers/images/
