@@ -51,3 +51,4 @@ qmind.sqlite3
 references/papers/*.txt
 references/papers/*.zip
 references/papers/images/
+paper/
