@@ -41,7 +41,7 @@ class TechnicalAnalyst(BaseAnalyst):
     async def analyze(self, market_data: MarketData) -> AnalystReport:
         timeframe = list(market_data.klines.keys())[0] if market_data.klines else "1h"
         klines = market_data.klines.get(timeframe, [])
-        indicators = calculate_indicators(market_data) if klines else {}
+        indicators = (await calculate_indicators(market_data)) if klines else {}
 
         def fmt_ma(key: str, label: str = "") -> str:
             v = indicators.get(key)

@@ -75,7 +75,7 @@ class SingleTradingAgent:
         support, resistance = self._get_support_resistance(klines)
 
         # 计算技术指标
-        indicators = calculate_indicators(market_data) if klines else {}
+        indicators = (await calculate_indicators(market_data)) if klines else {}
 
         def fmt(key: str, unit: str = "") -> str:
             v = indicators.get(key)

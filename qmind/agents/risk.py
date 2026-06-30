@@ -108,11 +108,23 @@ class TriangleRiskControl:
 
         # 并行执行三个风控审核
         import asyncio
-        aggressive, conservative, neutral = await asyncio.gather(
+        results = await asyncio.gather(
             self._review(self.aggressive_parser, prompt, AGGRESSIVE_SYSTEM_PROMPT),
             self._review(self.conservative_parser, prompt, CONSERVATIVE_SYSTEM_PROMPT),
             self._review(self.neutral_parser, prompt, NEUTRAL_SYSTEM_PROMPT),
+            return_exceptions=True,
         )
+
+        # 处理可能的异常
+        def _safe_review(idx: int, role: str, default: RiskReview) -> RiskReview:
+            r = results[idx]
+            return r if not isinstance(r, Exception) else RiskReview(role=role, decision="reject", reason=str(r))
+
+        aggressive = _safe_review(0, "aggressive", RiskReview(role="aggressive", decision="reject", reason="异常"))
+        conservative = _safe_review(1, "conservative",
+                                    RiskReview(role="conservative", decision="reject", reason="异常"))
+        neutral = _safe_review(2, "neutral",
+                               RiskReview(role="neutral", decision="reject", reason="异常"))
 
         # CVaR 硬约束校验
         cvar = self._calculate_cvar(decision, account_balance)
@@ -121,16 +133,13 @@ class TriangleRiskControl:
         vetoed_by = []
         adjustments: dict[str, Any] = {}
 
-        approved_count = 0
         for rev in approvals:
             if rev.decision == "reject":
                 vetoed_by.append(rev.role)
-            else:
-                approved_count += 1
-                if rev.suggested_position_size_pct is not None:
-                    adjustments["position_size_pct"] = min(
-                        adjustments.get("position_size_pct", 100),
-                        rev.suggested_position_size_pct,
+            elif rev.suggested_position_size_pct is not None:
+                adjustments["position_size_pct"] = min(
+                    adjustments.get("position_size_pct", 100),
+                    rev.suggested_position_size_pct,
                     )
 
         # CVaR 约束: 如果没通过，也加入否决

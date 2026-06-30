@@ -135,8 +135,8 @@ class QMindPipeline:
         # 获取辩论降级因子（如果有）
         debate_result = state.get("debate")
         confidence_downgrade = 1.0
-        if debate_result and debate_result.get("consensus_confidence"):
-            confidence_downgrade = debate_result["consensus_confidence"]
+        if debate_result is not None:
+            confidence_downgrade = debate_result.get("consensus_confidence") or 1.0
 
         # 使用单 Agent 做决策
         decision = await self.single_agent.analyze(market_data)
@@ -168,19 +168,32 @@ class QMindPipeline:
     # ── 执行/拒绝终端节点 ──
 
     async def execute(self, state: AgentState) -> dict[str, Any]:
-        """执行交易（或 dryRun 记录）"""
+        """执行交易 — 通过 Exchange 下单或 dryRun 记录"""
         decision = state.get("decision")
         if decision is None:
             return {"execution_result": {"status": "no_decision"}}
 
-        execution = {
-            "status": "dry_run" if True else "executed",  # 当前 default dryRun
-            "symbol": decision.symbol,
-            "decision": decision.decision,
-            "entry": decision.entry,
-            "position_size_pct": decision.position_size_pct,
-            "confidence": decision.confidence,
-        }
+        if self.exchange and not self.exchange.dry_run:
+            try:
+                order = await self.exchange.place_order(
+                    symbol=decision.symbol,
+                    side="buy" if decision.decision == "LONG" else "sell",
+                    order_type=decision.entry.get("type", "limit"),
+                    quantity=decision.entry.get("quantity", 0),
+                    price=decision.entry.get("price", 0),
+                )
+                execution = {"status": "live", "order_id": order.order_id, "order": order}
+            except Exception as e:
+                execution = {"status": "error", "error": str(e)}
+        else:
+            execution = {
+                "status": "dry_run",
+                "symbol": decision.symbol,
+                "decision": decision.decision,
+                "entry": decision.entry,
+                "position_size_pct": decision.position_size_pct,
+                "confidence": decision.confidence,
+            }
         return {"execution_result": execution}
 
     async def reject(self, state: AgentState) -> dict[str, Any]:
