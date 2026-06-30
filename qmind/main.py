@@ -10,11 +10,23 @@ QMind — CLI 入口
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 import click
+from rich.console import Console
+from rich.table import Table
 
+from qmind.audit_log import AuditLogger
 from qmind.config import Config
+from qmind.execution.factory import ExchangeFactory
+from qmind.graph.pipeline import QMindPipeline
+from qmind.llm.client import LLMClient
+from qmind.notification import Notifier
+from qmind.scheduler import Scheduler
+from qmind.strategies.registry import list_strategies
+
+console = Console()
 
 
 @click.group()
@@ -24,24 +36,21 @@ from qmind.config import Config
 def cli(ctx: click.Context, config: str | None, dry_run: bool) -> None:
     """QMind — 量化交易多智能体系统"""
     ctx.ensure_object(dict)
-    ctx.obj["config"] = Config(path=Path(config) if config else None)
+    cfg = Config(path=Path(config) if config else None)
+    ctx.obj["config"] = cfg
     ctx.obj["dry_run"] = dry_run
+    ctx.obj["llm_client"] = LLMClient()
 
-
-@cli.command()
-@click.argument("symbols", nargs=-1, required=True)
-@click.option("--timeframe", "-t", default="1h", help="时间框架 (1m, 5m, 1h, 1d)")
-@click.option("--interval", "-i", default=300, help="轮询间隔（秒），默认 300")
-@click.pass_context
-def watch(ctx: click.Context, symbols: tuple[str], timeframe: str, interval: int) -> None:
-    """持续监控标的，有信号时推送通知"""
-    from rich.console import Console
-    console = Console()
-    dry_run = ctx.obj["dry_run"]
-    console.print(f"[yellow]watch[/yellow] 模式启动 (dryRun={'on' if dry_run else 'off'})")
-    console.print(f"监控标的: {', '.join(symbols)} | 时间框架: {timeframe}")
-    if dry_run:
-        console.print("[dim]提示: 去掉 --dry-run 以实盘模式运行[/dim]")
+    # 初始化各模块
+    ctx.obj["audit"] = AuditLogger(db_path=cfg.db_path)
+    ctx.obj["pipeline"] = QMindPipeline(ctx.obj["llm_client"])
+    ctx.obj["exchange"] = ExchangeFactory.create(
+        "dry_run" if dry_run else cfg.get("execution.default_exchange", "binance"),
+        dry_run=dry_run,
+    )
+    ctx.obj["notifier"] = Notifier(
+        feishu_webhook=cfg.get("notification.webhook_url", ""),
+    )
 
 
 @cli.command()
@@ -51,13 +60,133 @@ def watch(ctx: click.Context, symbols: tuple[str], timeframe: str, interval: int
 @click.pass_context
 def analyze(ctx: click.Context, symbol: str, timeframe: str, output: str | None) -> None:
     """对标的执行一次完整分析"""
-    from rich.console import Console
-    console = Console()
     dry_run = ctx.obj["dry_run"]
 
-    console.print(f"\n[bold cyan]QMind 分析报告[/bold cyan] · {symbol}")
-    console.print(f"[dim]时间框架: {timeframe} | dryRun: {'on' if dry_run else 'off'}[/dim]")
-    console.print("[yellow]⏳ 分析中... 此功能将在 Phase 1 完成后可用[/yellow]\n")
+    async def _run():
+        console.print(f"\n[bold cyan]QMind 分析报告[/bold cyan] · {symbol}")
+        console.print(f"[dim]时间框架: {timeframe} | dryRun: {'on' if dry_run else 'off'}[/dim]")
+
+        pipeline: QMindPipeline = ctx.obj["pipeline"]
+        result = await pipeline.run(symbol, timeframe)
+
+        # 输出结果
+        decision = result.get("decision")
+        risk = result.get("risk")
+        analyses = result.get("analyses", [])
+        debate = result.get("debate")
+        execution = result.get("execution_result")
+        disagreement = result.get("disagreement", 0.0)
+        errors = result.get("errors", [])
+
+        # 分析师共识
+        console.print("\n[bold]分析师共识[/bold]")
+        for a in analyses:
+            emoji = {"bullish": "🟢", "neutral": "⚪", "bearish": "🔴"}
+            console.print(f"  {emoji.get(a.stance, '⚪')} [{a.analyst}] {a.stance} ({a.confidence:.0%})")
+
+        # 分歧度
+        console.print(f"\n  [dim]分歧度 δ={disagreement:.3f}")
+        if debate:
+            console.print(f"  辩论: 降级因子={debate.get('consensus_confidence', 1.0):.2f}")
+
+        # 决策
+        if decision:
+            d = decision
+            console.print(f"\n[bold cyan]决策: {d.decision}[/bold cyan]")
+            console.print(f"  入场: {d.entry.get('price', 'N/A')}")
+            console.print(f"  止损: {d.stop_loss.get('price', 'N/A')}")
+            console.print(f"  仓位: {d.position_size_pct:.1f}%")
+            console.print(f"  置信度: {d.confidence:.2f} (已校准)")
+            console.print(f"  风险收益比: {d.risk_reward_ratio:.2f}")
+
+        # 风控
+        if risk:
+            status = "✅ 通过" if risk.approved else "❌ 否决"
+            veto = f" (否决: {', '.join(risk.vetoed_by)})" if risk.vetoed_by else ""
+            console.print(f"\n[bold]风控审核: {status}{veto}[/bold]")
+
+        # 执行
+        if execution:
+            exec_status = execution.get("status", "unknown")
+            if exec_status == "dry_run":
+                console.print("\n[dim]模拟执行 — Net PnL 已模拟: $0.00[/dim]")
+            elif exec_status == "rejected":
+                console.print(f"\n[yellow]交易已取消: {execution.get('reason', '')}[/yellow]")
+
+        # 错误
+        for err in errors:
+            console.print(f"[red]⚠ {err}[/red]")
+
+        # 审计
+        audit: AuditLogger = ctx.obj["audit"]
+        cost_tracker = ctx.obj["llm_client"].cost_tracker
+        audit.log_decision(
+            symbol=symbol,
+            decision=decision.decision if decision else "N/A",
+            confidence=decision.confidence if decision else 0,
+            position_size_pct=decision.position_size_pct if decision else 0,
+            entry_price=decision.entry.get("price", 0) if decision else 0,
+            stop_loss=decision.stop_loss.get("price", 0) if decision else 0,
+            risk_reward_ratio=decision.risk_reward_ratio if decision else 0,
+            approval=risk.approved if risk else False,
+            vetoed_by=risk.vetoed_by if risk else None,
+            token_usage=cost_tracker.summary(),
+            analyses=analyses,
+            debate=debate,
+            risk=risk,
+            error="; ".join(errors) if errors else "",
+            session_id=f"{symbol}_{timeframe}",
+        )
+
+        console.print(f"\n[dim]Token 用量: {cost_tracker.total_tokens()}"
+                      f" | 成本: ${cost_tracker.total_cost():.6f}[/dim]")
+        console.print(f"\n[dim]提示: qmind analyze {symbol} --live 去掉 dryRun 模拟[/dim]")
+
+    asyncio.run(_run())
+
+
+@cli.command()
+@click.argument("symbols", nargs=-1, required=True)
+@click.option("--timeframe", "-t", default="1h", help="时间框架")
+@click.option("--interval", "-i", default=300, help="轮询间隔（秒）")
+@click.pass_context
+def watch(ctx: click.Context, symbols: tuple[str], timeframe: str, interval: int) -> None:
+    """持续监控标的，有信号时推送通知"""
+    dry_run = ctx.obj["dry_run"]
+    console.print(f"[yellow]watch[/yellow] 模式启动 (dryRun={'on' if dry_run else 'off'})")
+    console.print(f"监控标的: {', '.join(symbols)} | 时间框架: {timeframe}")
+
+    async def _watch():
+        pipeline: QMindPipeline = ctx.obj["pipeline"]
+        notifier: Notifier = ctx.obj["notifier"]
+        scheduler = Scheduler()
+
+        async def handler(symbol: str, tf: str):
+            result = await pipeline.run(symbol, tf)
+            decision = result.get("decision")
+            risk = result.get("risk")
+            if decision and decision.decision != "HOLD" and risk and risk.approved:
+                await notifier.send_trade_signal(
+                    symbol=symbol,
+                    decision=decision.decision,
+                    confidence=decision.confidence,
+                    position_pct=decision.position_size_pct,
+                    reason=decision.reasoning_chain.get("thesis_cot", ""),
+                )
+                console.print(f"[green]信号推送: {symbol} {decision.decision}[/green]")
+
+        for sym in symbols:
+            scheduler.add_job(sym, timeframe, interval)
+
+        try:
+            await scheduler.start(handler)
+        except asyncio.CancelledError:
+            await scheduler.stop()
+
+    try:
+        asyncio.run(_watch())
+    except KeyboardInterrupt:
+        console.print("\n[yellow]监控已停止[/yellow]")
 
 
 @cli.command()
@@ -67,21 +196,81 @@ def analyze(ctx: click.Context, symbol: str, timeframe: str, output: str | None)
 @click.option("--output", "-o", type=click.Path(), help="输出 HTML 报告路径")
 def backtest(strategy: str, start: str, end: str, output: str | None) -> None:
     """运行策略回测"""
-    from rich.console import Console
-    console = Console()
     console.print(f"\n[bold cyan]QMind 回测[/bold cyan] · {strategy}")
     console.print(f"[dim]区间: {start} → {end}[/dim]")
-    console.print("[yellow]⏳ 回测中... 此功能将在 Phase 1 完成后可用[/yellow]\n")
+    strategies = list_strategies()
+    names = [s["name"] for s in strategies]
+    if strategy not in names:
+        console.print(f"[red]未知策略: {strategy}[/red]")
+        console.print(f"可用策略: {', '.join(names)}")
+        return
+    console.print(f"[green]策略 {strategy} 已找到，回测引擎将在 Phase 1.3 后可用[/green]")
 
 
 @cli.command()
 @click.option("--from-log", "log_path", type=click.Path(exists=True), help="交易日志路径")
-def learn(log_path: str | None) -> None:
+@click.pass_context
+def learn(ctx: click.Context, log_path: str | None) -> None:
     """从交易日志中学习，更新 CVRF 经验库"""
-    from rich.console import Console
-    console = Console()
+    from qmind.learning.memory import MemoryStore
+
     console.print("[bold cyan]QMind CVRF 学习[/bold cyan]")
-    console.print("[yellow]⏳ 学习中... 此功能将在 Phase 4 完成后可用[/yellow]\n")
+
+    async def _learn():
+        memory = MemoryStore("qmind.db")
+
+        console.print(f"当前记忆库: {memory.count()} 条教训")
+
+        if log_path:
+            console.print(f"[yellow]从 {log_path} 读取交易记录...[/yellow]")
+            # TODO: 解析 trades.log → TradeRecord 列表 → pipeline.batch_process()
+            console.print("[yellow]交易解析功能将在后续版本完成[/yellow]")
+        else:
+            recent = memory.get_recent(limit=10)
+            if recent:
+                console.print("\n[green]最近教训:[/green]")
+                for entry in recent:
+                    for lesson in entry.lessons:
+                        console.print(f"  📌 {lesson.lesson} ({lesson.confidence:.0%})")
+            else:
+                console.print("[dim]暂无教训记录。运行分析交易后自动生成。[/dim]")
+
+        console.print("\n[dim]qmind learn --from-log trades.log 从日志学习[/dim]")
+
+    asyncio.run(_learn())
+
+
+@cli.command(name="list")
+@click.option("--strategies/--no-strategies", default=True, help="列出策略")
+@click.option("--audit/--no-audit", default=False, help="查看审计日志")
+@click.pass_context
+def list_cmd(ctx: click.Context, strategies: bool, audit: bool) -> None:
+    """列出系统信息"""
+    if strategies:
+        table = Table(title="注册策略")
+        table.add_column("名称", style="cyan")
+        table.add_column("描述")
+        for s in list_strategies():
+            table.add_row(s["name"], s["description"])
+        console.print(table)
+
+    if audit:
+        audit_logger: AuditLogger = ctx.obj["audit"]
+        summary = audit_logger.summary()
+        table = Table(title="审计摘要")
+        table.add_column("指标", style="cyan")
+        table.add_column("数值")
+        for k, v in summary.items():
+            table.add_row(k, str(v))
+        console.print(table)
+
+
+@cli.command()
+def version() -> None:
+    """显示版本信息"""
+    from qmind import __version__
+    console.print(f"[bold cyan]QMind[/bold cyan] v{__version__}")
+    console.print("量化交易多智能体系统")
 
 
 if __name__ == "__main__":
