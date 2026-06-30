@@ -27,6 +27,10 @@ class DryRunExchange(ExchangeBase):
     async def get_price(self, symbol: str) -> float:
         return self._prices.get(symbol, 0.0)
 
+    def update_price(self, symbol: str, price: float) -> None:
+        """从市场数据更新价格"""
+        self._prices[symbol] = price
+
     async def get_balance(self, asset: str = "") -> list[Balance]:
         if asset:
             return [self._balance.get(asset, Balance(asset=asset, free=0, locked=0, total=0))]

@@ -38,8 +38,9 @@ logger = logging.getLogger(__name__)
 class QMindPipeline:
     """QMind 五阶段交易流水线"""
 
-    def __init__(self, llm_client: LLMClient):
+    def __init__(self, llm_client: LLMClient, exchange=None):
         self.llm_client = llm_client
+        self.exchange = exchange
         self.analyst_runner = AnalystRunner(llm_client)
         self.trust_agent = TrustAgent(llm_client)
         self.skeptic_agent = SkepticAgent(llm_client)
@@ -52,11 +53,10 @@ class QMindPipeline:
     # ── 阶段 1: 数据采集 ──
 
     async def collect_data(self, state: AgentState) -> dict[str, Any]:
-        """采集市场数据"""
+        """采集市场数据 + 同步价格到交易所"""
         symbol = state.get("symbol", "UNKNOWN")
         timeframe = state.get("timeframe", "1h")
 
-        # 尝试从数据源获取
         from qmind.data.sources.factory import DataSourceFactory
         factory = DataSourceFactory()
         try:
@@ -64,6 +64,13 @@ class QMindPipeline:
         except Exception as e:
             logger.warning(f"数据采集失败: {e}，使用空数据")
             market_data = MarketData(symbol=symbol)
+
+        # 同步价格到交易所
+        if self.exchange and hasattr(self.exchange, "update_price"):
+            for klines in market_data.klines.values():
+                if klines:
+                    self.exchange.update_price(market_data.symbol, klines[-1].close)
+                    break
 
         return {"market_data": market_data}
 

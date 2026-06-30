@@ -42,12 +42,13 @@ def cli(ctx: click.Context, config: str | None, dry_run: bool) -> None:
     ctx.obj["llm_client"] = LLMClient()
 
     # 初始化各模块
-    ctx.obj["audit"] = AuditLogger(db_path=cfg.db_path)
-    ctx.obj["pipeline"] = QMindPipeline(ctx.obj["llm_client"])
-    ctx.obj["exchange"] = ExchangeFactory.create(
+    exchange = ExchangeFactory.create(
         "dry_run" if dry_run else cfg.get("execution.default_exchange", "binance"),
         dry_run=dry_run,
     )
+    ctx.obj["audit"] = AuditLogger(db_path=cfg.db_path)
+    ctx.obj["pipeline"] = QMindPipeline(ctx.obj["llm_client"], exchange=exchange)
+    ctx.obj["exchange"] = exchange
     ctx.obj["notifier"] = Notifier(
         feishu_webhook=cfg.get("notification.webhook_url", ""),
     )
@@ -263,6 +264,31 @@ def list_cmd(ctx: click.Context, strategies: bool, audit: bool) -> None:
         for k, v in summary.items():
             table.add_row(k, str(v))
         console.print(table)
+
+
+@cli.command()
+@click.argument("symbol")
+def price(symbol: str) -> None:
+    """测试获取标的实时价格"""
+    async def _price():
+        exchange = ExchangeFactory.create("dry_run", dry_run=True)
+        from qmind.data.sources.factory import DataSourceFactory
+        factory = DataSourceFactory()
+        data = await factory.fetch_market_data(symbol)
+        for klines in data.klines.values():
+            if klines:
+                price_val = klines[-1].close
+                exchange.update_price(symbol, price_val)
+                console.print(f"\n[bold cyan]{symbol} 实时价格[/bold cyan]")
+                console.print(f"  当前: ${price_val:,.2f}")
+                console.print(f"  开盘: ${klines[-1].open:,.2f}")
+                console.print(f"  最高: ${klines[-1].high:,.2f}")
+                console.print(f"  最低: ${klines[-1].low:,.2f}")
+                console.print(f"  K线数: {len(klines)}")
+                return
+        console.print("[red]未能获取价格数据[/red]")
+        console.print("[dim]可能原因: yfinance 速率限制、网络问题、无效标的[/dim]")
+    asyncio.run(_price())
 
 
 @cli.command()

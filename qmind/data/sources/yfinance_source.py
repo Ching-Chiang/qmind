@@ -8,6 +8,7 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 
+from qmind.data.symbol_map import to_yfinance
 from qmind.graph.state import OHLCV, MarketData
 
 
@@ -32,6 +33,7 @@ class YFinanceSource:
         _end: str | None = None,
     ) -> MarketData:
         """获取 K 线数据"""
+        yf_symbol = to_yfinance(symbol)
         interval_map = {
             "1m": "1m", "5m": "5m", "15m": "15m", "30m": "30m",
             "1h": "60m", "4h": "60m", "1d": "1d", "1w": "1wk",
@@ -43,7 +45,7 @@ class YFinanceSource:
         if interval == "1m":
             period = "7d"
 
-        ticker = self.yf.Ticker(symbol)
+        ticker = self.yf.Ticker(yf_symbol)
         hist = ticker.history(period=period, interval=yf_interval)
 
         now = datetime.now(UTC)
@@ -63,7 +65,7 @@ class YFinanceSource:
             ))
 
         return MarketData(
-            symbol=symbol,
+            symbol=yf_symbol,
             klines={interval: klines},
             timestamp=int(now.timestamp() * 1000),
             as_of=now,

@@ -4,7 +4,12 @@
 
 from __future__ import annotations
 
+import logging
+
+from qmind.data.symbol_map import detect_source
 from qmind.graph.state import MarketData
+
+logger = logging.getLogger(__name__)
 
 
 class DataSourceFactory:
@@ -18,18 +23,17 @@ class DataSourceFactory:
     ) -> MarketData:
         """自动选择数据源获取市场数据"""
         if source == "auto":
-            if symbol.endswith(("US", ".N", ".O")):
-                source = "yfinance"
-            elif symbol.endswith(("SZ", "SH", ".BJ")) or len(symbol) == 6:
-                source = "tushare"
-            else:
-                source = "yfinance"
+            source = detect_source(symbol)
 
-        if source == "yfinance":
-            from qmind.data.sources.yfinance_source import YFinanceSource
-            return await YFinanceSource().fetch_klines(symbol, interval=interval)
-        elif source == "tushare":
-            from qmind.data.sources.tushare_source import TushareSource
-            return await TushareSource().fetch_daily(symbol)
-        else:
-            raise ValueError(f"Unsupported data source: {source}")
+        try:
+            if source == "yfinance":
+                from qmind.data.sources.yfinance_source import YFinanceSource
+                return await YFinanceSource().fetch_klines(symbol, interval=interval)
+            elif source == "tushare":
+                from qmind.data.sources.tushare_source import TushareSource
+                return await TushareSource().fetch_daily(symbol)
+            else:
+                raise ValueError(f"Unsupported data source: {source}")
+        except Exception as e:
+            logger.warning(f"获取 {symbol} 数据失败 ({source}): {e}")
+            return MarketData(symbol=symbol)
