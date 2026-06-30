@@ -25,9 +25,12 @@ async def get_klines(
 
 async def calculate_indicators(market_data: MarketData) -> dict[str, Any]:
     """计算技术指标"""
-    klines = market_data.klines.get(list(market_data.klines.keys())[0], [])
+    if not market_data.klines:
+        return {"error": "无 K 线数据"}
+    timeframe = next(iter(market_data.klines.keys()))
+    klines = market_data.klines[timeframe]
     if len(klines) < 50:
-        return {"error": "数据不足，至少需要 50 根 K 线"}
+        return {"error": f"数据不足 ({len(klines)} 根)，至少需要 50 根 K 线"}
 
     import pandas as pd
     import ta

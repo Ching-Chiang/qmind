@@ -110,11 +110,13 @@ class RiskResult(BaseModel):
     """风控审核结果"""
     approved: bool = False
     veto_count: int = 0
+    vetoed_by: list[str] = []
     adjustments: dict[str, Any] = {}
     aggressive_opinion: str = ""
     conservative_opinion: str = ""
     neutral_opinion: str = ""
     cvar_check: dict[str, Any] = {}
+    final_position_size_pct: float = 0.0
 
 
 class Lesson(BaseModel):

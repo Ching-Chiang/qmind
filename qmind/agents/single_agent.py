@@ -65,7 +65,7 @@ class SingleTradingAgent:
 
         return f"{support:.2f}", f"{resistance:.2f}"
 
-    def _build_analysis_prompt(self, market_data: MarketData) -> str:
+    async def _build_analysis_prompt(self, market_data: MarketData) -> str:
         """构建完整的分析 prompt（含三级推理链）"""
         timeframe = list(market_data.klines.keys())[0] if market_data.klines else "1h"
         klines = market_data.klines.get(timeframe, [])
@@ -151,7 +151,7 @@ class SingleTradingAgent:
 
     async def analyze(self, market_data: MarketData) -> TradeDecision:
         """执行一次完整分析，返回结构化决策"""
-        prompt = self._build_analysis_prompt(market_data)
+        prompt = await self._build_analysis_prompt(market_data)
 
         decision = await self.parser.parse(
             prompt=prompt,
