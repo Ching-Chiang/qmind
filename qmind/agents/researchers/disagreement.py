@@ -17,7 +17,9 @@ from qmind.graph.state import AnalystReport
 def compute_disagreement(analyses: list[AnalystReport]) -> dict[str, Any]:
     """计算分析师之间的分歧度"""
     if not analyses:
-        return {"delta": 0.0, "level": "none", "stances": [], "confidences": []}
+        return {"delta": 0.0, "level": "none", "stances": [], "confidences": [],
+                "strongest_analyst": None, "strongest_stance": None,
+                "strongest_confidence": 0.0, "needs_debate": False}
 
     stances = [a.stance for a in analyses]
     confidences = [a.confidence for a in analyses]
