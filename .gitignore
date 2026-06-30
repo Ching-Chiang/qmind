@@ -45,10 +45,17 @@ qmind.sqlite3
 # but individual PDFs > 50MB should be gitignored
 *.pdf
 !references/papers/*.pdf
+!paper/*.pdf
 
 # Paper parsing intermediate artifacts (MCP mineru output)
 *_parsed/
 references/papers/*.txt
 references/papers/*.zip
 references/papers/images/
-paper/
+
+# Paper outputs (keep source, ignore compiled artifacts)
+paper/*.aux
+paper/*.log
+paper/*.out
+!paper/*.pdf
+!paper/*.tex
