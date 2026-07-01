@@ -100,6 +100,10 @@ def analyze(ctx: click.Context, symbol: str, timeframe: str, output: str | None)
                     for sig in a.key_signals[:3]:
                         if isinstance(sig, str):
                             console.print(f"    [dim]信号:[/dim] {sig}")
+                        elif isinstance(sig, dict):
+                            s = sig.get("signal") or sig.get("name", "")
+                            v = sig.get("value", "")
+                            console.print(f"    [dim]信号:[/dim] {s} {v}")
                         else:
                             console.print(f"    [dim]信号:[/dim] {sig.signal} {sig.value}")
                 if a.risk_factors:
