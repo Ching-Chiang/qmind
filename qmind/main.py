@@ -32,14 +32,16 @@ console = Console()
 @click.group()
 @click.option("--config", "-c", type=click.Path(exists=True), help="配置文件路径")
 @click.option("--dry-run/--live", default=True, help="dryRun 模式（默认开启）")
-@click.option("--source", default="auto", help="数据源: auto / yfinance / tushare / mock")
+@click.option("--source", default="auto", help="数据源: auto / yfinance / tushare / binance / mock")
+@click.option("--verbose", "-v", is_flag=True, help="显示智能体详细思考过程")
 @click.pass_context
-def cli(ctx: click.Context, config: str | None, dry_run: bool, source: str) -> None:
+def cli(ctx: click.Context, config: str | None, dry_run: bool, source: str, verbose: bool) -> None:
     """QMind — 量化交易多智能体系统"""
     ctx.ensure_object(dict)
     cfg = Config(path=Path(config) if config else None)
     ctx.obj["config"] = cfg
     ctx.obj["dry_run"] = dry_run
+    ctx.obj["verbose"] = verbose
     ctx.obj["llm_client"] = LLMClient()
 
     # 初始化各模块
@@ -65,10 +67,16 @@ def analyze(ctx: click.Context, symbol: str, timeframe: str, output: str | None)
     dry_run = ctx.obj["dry_run"]
 
     async def _run():
+        verbose = ctx.obj.get("verbose", False)
         console.print(f"\n[bold cyan]QMind 分析报告[/bold cyan] · {symbol}")
-        console.print(f"[dim]时间框架: {timeframe} | dryRun: {'on' if dry_run else 'off'}[/dim]")
+        console.print(f"[dim]时间框架: {timeframe} | dryRun: {'on' if dry_run else 'off'} | verbose: {'on' if verbose else 'off'}[/dim]")
 
         pipeline: QMindPipeline = ctx.obj["pipeline"]
+
+        if verbose:
+            console.print("\n[bold]阶段 1/5: 数据采集[/bold]")
+            console.print(f"  [dim]获取 {symbol} 行情数据...[/dim]")
+
         result = await pipeline.run(symbol, timeframe)
 
         # 输出结果
@@ -80,28 +88,88 @@ def analyze(ctx: click.Context, symbol: str, timeframe: str, output: str | None)
         disagreement = result.get("disagreement", 0.0)
         errors = result.get("errors", [])
 
-        # 分析师共识
-        console.print("\n[bold]分析师共识[/bold]")
-        for a in analyses:
-            icon = {"bullish": "[green]+[/]", "neutral": "[yellow]~[/]", "bearish": "[red]-[/]"}
-            console.print(f"  {icon.get(a.stance, '[yellow]~[/]')} [{a.analyst}] {a.stance} ({a.confidence:.0%})")
+        # ── 分析师详细输出（verbose） ──
+        if verbose and analyses:
+            console.print("\n[bold]阶段 2/5: 多维分析[/bold]")
+            for a in analyses:
+                icon = {"bullish": "[green]+[/]", "neutral": "[yellow]~[/]", "bearish": "[red]-[/]"}
+                console.print(f"  {icon.get(a.stance, '[yellow]~[/]')} [bold]{a.analyst}[/bold]: {a.stance} ({a.confidence:.0%})")
+                if a.core_reason:
+                    console.print(f"    [dim]逻辑:[/dim] {a.core_reason[:200]}")
+                if a.key_signals:
+                    for sig in a.key_signals[:3]:
+                        if isinstance(sig, str):
+                            console.print(f"    [dim]信号:[/dim] {sig}")
+                        else:
+                            console.print(f"    [dim]信号:[/dim] {sig.signal} {sig.value}")
+                if a.risk_factors:
+                    for rf in a.risk_factors[:2]:
+                        console.print(f"    [red]风险:[/red] {rf}")
 
-        # 分歧度
-        console.print(f"\n  [dim]分歧度 δ={disagreement:.3f}")
-        if debate:
-            console.print(f"  辩论: 降级因子={debate.get('consensus_confidence', 1.0):.2f}")
+        # ── 辩论详细输出（verbose） ──
+        if verbose and debate:
+            console.print("\n[bold]阶段 3/5: 多空辩论[/bold]")
+            console.print(f"  分歧度 δ={disagreement:.3f}")
+            console.print(f"  收敛: {debate.get('converged')}")
+            console.print(f"  置信度降级因子: {debate.get('consensus_confidence', 1.0):.2f}")
+            if debate.get("agreement_points"):
+                console.print(f"  [green]共识点:[/green]")
+                for p in debate["agreement_points"][:3]:
+                    console.print(f"    + {p}")
+            if debate.get("disagreement_points"):
+                console.print(f"  [red]分歧点:[/red]")
+                for p in debate["disagreement_points"][:3]:
+                    console.print(f"    - {p}")
 
-        # 决策
+        # ── 决策详细输出（verbose） ──
+        if verbose:
+            console.print("\n[bold]阶段 4/5: 交易决策[/bold]")
+
+        # 分析师共识（简洁版）
+        if not verbose:
+            console.print("\n[bold]分析师共识[/bold]")
+            for a in analyses:
+                icon = {"bullish": "[green]+[/]", "neutral": "[yellow]~[/]", "bearish": "[red]-[/]"}
+                console.print(f"  {icon.get(a.stance, '[yellow]~[/]')} [{a.analyst}] {a.stance} ({a.confidence:.0%})")
+            console.print(f"\n  [dim]分歧度 δ={disagreement:.3f}")
+            if debate:
+                console.print(f"  辩论: 降级因子={debate.get('consensus_confidence', 1.0):.2f}")
+
         if decision:
             d = decision
             console.print(f"\n[bold cyan]决策: {d.decision}[/bold cyan]")
             console.print(f"  入场: {d.entry.get('price', 'N/A')}")
-            console.print(f"  止损: {d.stop_loss.get('price', 'N/A')}")
+            console.print(f"  止损: {d.stop_loss.get('price', 'N/A') if d.stop_loss else 'N/A'}")
             console.print(f"  仓位: {d.position_size_pct:.1f}%")
-            console.print(f"  置信度: {d.confidence:.2f} (已校准)")
+            console.print(f"  置信度: {d.confidence:.2f}")
             console.print(f"  风险收益比: {d.risk_reward_ratio:.2f}")
+            if verbose and d.reasoning_chain:
+                rc = d.reasoning_chain
+                if rc.get("data_cot"):
+                    console.print(f"  [dim]Data-CoT:[/dim] {rc['data_cot'][:200]}")
+                if rc.get("concept_cot"):
+                    console.print(f"  [dim]Concept-CoT:[/dim] {rc['concept_cot'][:200]}")
+                if rc.get("thesis_cot"):
+                    console.print(f"  [dim]Thesis-CoT:[/dim] {rc['thesis_cot'][:200]}")
 
-        # 风控
+        # ── 风控详细输出（verbose） ──
+        if verbose and risk:
+            console.print("\n[bold]阶段 5/5: 三角风控审核[/bold]")
+            for role in ("aggressive_review", "conservative_review", "neutral_review"):
+                review = getattr(risk, role, None)
+                if review:
+                    marker = {"approve": "[green]PASS[/]", "reject": "[red]VETO[/]", "modify": "[yellow]MODIFY[/]"}
+                    status = marker.get(review.decision, "[yellow]?[/]")
+                    console.print(f"  {status} [bold]{review.role}[/bold]")
+                    if review.reason:
+                        console.print(f"    [dim]理由:[/dim] {review.reason[:200]}")
+                    if review.risk_assessment:
+                        console.print(f"    [dim]风险评估:[/dim] {review.risk_assessment[:200]}")
+                    if review.concerns:
+                        for c in review.concerns[:2]:
+                            console.print(f"    [red]顾虑:[/red] {c}")
+
+        # 风控简洁版
         if risk:
             status = "[green]PASS[/]" if risk.approved else "[red]VETO[/]"
             veto = f" (by: {', '.join(risk.vetoed_by)})" if risk.vetoed_by else ""
