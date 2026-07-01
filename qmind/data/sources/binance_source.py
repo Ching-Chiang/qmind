@@ -1,14 +1,15 @@
 """
-数据源适配器 — Binance API (加密货币)。
+数据源适配器 — Binance 公开 REST API (加密货币)。
 
-使用 ccxt 的 Binance 实现获取现货和合约 K 线数据。
-所有数据附带 as_of 时间戳防止 Point-in-Time 偏差。
+直接 httpx 请求 Binance 公开接口，不走 ccxt（避免复杂市场加载）。
+支持 HTTP/SOCKS5 代理（通过 httpx 原生 proxy 支持）。
 """
 
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+
+import httpx
 
 from qmind.graph.state import MarketData, OHLCV
 
@@ -20,24 +21,44 @@ _INTERVAL_MAP: dict[str, str] = {
 
 
 class BinanceSource:
-    """Binance 数据源适配器"""
+    """Binance 公开 REST API 适配器"""
 
-    def __init__(self) -> None:
-        self._exchange: Any = None
+    API_BASE = "https://api.binance.com"
+
+    def __init__(self, proxy: str = "") -> None:
+        self._proxy = proxy or self._detect_proxy()
+        self._client: httpx.AsyncClient | None = None
+
+    @staticmethod
+    def _detect_proxy() -> str:
+        """从环境变量或 Windows 系统代理自动检测"""
+        import os
+        for var in ("all_proxy", "ALL_PROXY", "https_proxy", "HTTPS_PROXY"):
+            val = os.environ.get(var, "")
+            if val:
+                return val
+        try:
+            import winreg
+            with winreg.OpenKey(
+                winreg.HKEY_CURRENT_USER,
+                r"Software\Microsoft\Windows\CurrentVersion\Internet Settings",
+            ) as key:
+                enabled, _ = winreg.QueryValueEx(key, "ProxyEnable")
+                if enabled:
+                    server, _ = winreg.QueryValueEx(key, "ProxyServer")
+                    return f"http://{server}"
+        except Exception:
+            pass
+        return ""
 
     @property
-    def exchange(self) -> Any:
-        if self._exchange is None:
-            import ccxt.async_support as ccxt
-            import aiohttp
-            connector = aiohttp.TCPConnector(ssl=True, force_close=True)
-            self._exchange = ccxt.binance({
-                "enableRateLimit": True,
-                "options": {"defaultType": "spot"},
-                "aiohttp_connector": connector,
-                "proxies": {"http": "", "https": ""},
-            })
-        return self._exchange
+    def client(self) -> httpx.AsyncClient:
+        if self._client is None:
+            kwargs: dict = {}
+            if self._proxy:
+                kwargs["proxy"] = self._proxy
+            self._client = httpx.AsyncClient(**kwargs)
+        return self._client
 
     async def fetch_klines(
         self,
@@ -46,9 +67,13 @@ class BinanceSource:
         limit: int = 200,
     ) -> MarketData:
         """获取 Binance K 线数据"""
-        ccxt_symbol = self._normalize_symbol(symbol)
+        pair = self._normalize_symbol(symbol).replace("/", "")
         tf = _INTERVAL_MAP.get(interval, "1h")
-        raw = await self.exchange.fetch_ohlcv(ccxt_symbol, tf, limit=limit)
+        url = f"{self.API_BASE}/api/v3/klines?symbol={pair}&interval={tf}&limit={limit}"
+
+        resp = await self.client.get(url)
+        resp.raise_for_status()
+        raw: list = resp.json()
 
         now = datetime.utcnow()
         klines = [
@@ -65,27 +90,25 @@ class BinanceSource:
         ]
 
         return MarketData(
-            symbol=ccxt_symbol,
+            symbol=self._normalize_symbol(symbol),
             klines={interval: klines},
-            timestamp=int(datetime.utcnow().timestamp() * 1000),
+            timestamp=int(now.timestamp() * 1000),
             as_of=now,
         )
 
     async def close(self) -> None:
-        if self._exchange:
-            await self._exchange.close()
-            self._exchange = None
+        if self._client:
+            await self._client.aclose()
+            self._client = None
 
     @staticmethod
     def _normalize_symbol(symbol: str) -> str:
-        """统一交易对格式为 Binance 标准"""
         s = symbol.upper().strip()
         if "/" not in s:
-            # USDT 永续合约优先
             if s.endswith("USDT"):
-                s = s + "/USDT"
+                s += "/USDT"
             elif s.endswith("BTC"):
-                s = s + "/BTC"
+                s += "/BTC"
             else:
-                s = s + "/USDT"
+                s += "/USDT"
         return s
