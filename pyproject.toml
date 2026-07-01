@@ -45,6 +45,9 @@ dependencies = [
   "cryptography>=44.0.0",
 ]
 
+[project.scripts]
+qmind = "qmind.main:cli"
+
 [tool.setuptools.packages.find]
 include = ["qmind*"]
 exclude = ["references*"]
