@@ -13,7 +13,9 @@ from typing import Any
 import yaml
 from dotenv import load_dotenv
 
-load_dotenv()
+# 显式指定 .env 路径（项目根目录），避免 uvicorn 热重载改 CWD 导致加载失败
+_env_path = Path(__file__).resolve().parent.parent / ".env"
+load_dotenv(dotenv_path=_env_path, verbose=True)
 
 DEFAULT_CONFIG_PATH = Path("config.yaml")
 
