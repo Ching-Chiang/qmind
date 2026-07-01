@@ -57,9 +57,9 @@ def detect_source(symbol: str) -> str:
     # 带 .SZ/.SH → A 股
     if s.endswith((".SZ", ".SH", ".BJ")):
         return "tushare"
-    # crypto
+    # crypto → Binance
     if any(c in s for c in ["/", "-"]) and any(q in s for q in ["USDT", "USD", "BTC"]):
-        return "yfinance"
+        return "binance"
     # 美股
     if s.endswith(("US", ".N", ".O")):
         return "yfinance"

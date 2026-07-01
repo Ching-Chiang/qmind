@@ -32,10 +32,10 @@ class TestToBinance:
 
 class TestDetectSource:
     def test_crypto_slash(self):
-        assert detect_source("BTC/USDT") == "yfinance"
+        assert detect_source("BTC/USDT") == "binance"
 
     def test_crypto_dash(self):
-        assert detect_source("ETH-USD") == "yfinance"
+        assert detect_source("ETH-USD") == "binance"
 
     def test_a_share_number(self):
         assert detect_source("000001") == "tushare"

@@ -35,6 +35,19 @@ class DataSourceFactory:
             elif source == "mock":
                 from qmind.data.sources.mock_source import MockSource
                 return await MockSource().fetch_klines(symbol, interval=interval)
+            elif source in ("binance", "crypto"):
+                from qmind.data.sources.binance_source import BinanceSource
+                bs = BinanceSource()
+                try:
+                    return await bs.fetch_klines(symbol, interval=interval)
+                except Exception as e:
+                    logger.warning(
+                        f"Binance 数据源不可用: {e}. "
+                        f"试试 --source mock (模拟) 或 --source yfinance (美股)"
+                    )
+                    raise
+                finally:
+                    await bs.close()
             else:
                 raise ValueError(f"Unsupported data source: {source}")
         except Exception as e:
