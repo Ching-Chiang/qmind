@@ -5,6 +5,11 @@
   <img src="https://img.shields.io/badge/status-alpha-orange" alt="Alpha">
 </p>
 
+<p align="center">
+  <a href="README.md"><b>English</b></a> ·
+  <a href="README.zh.md">中文</a>
+</p>
+
 <h1 align="center">QMind</h1>
 <p align="center"><b>LLM-Driven Multi-Agent Quantitative Trading System</b></p>
 <p align="center">多智能体协作 · 结构化辩论 · CVRF 持续学习 · 多交易所执行</p>
@@ -175,8 +180,6 @@ This project is grounded in findings from **18 peer-reviewed papers** (TradingAg
 3. **Position sizing is NOT LLM-driven** — Handled by the risk module with CVaR constraints
 4. **Always report Net PnL** — Transaction costs (commission + slippage + spread + gas) are explicitly modeled
 5. **Time-consistency enforced** — Point-in-time data control, no look-ahead
-
-For full details see [CLAUDE.md](CLAUDE.md) (local only).
 
 ## Development
 

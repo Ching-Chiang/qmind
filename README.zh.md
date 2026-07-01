@@ -5,6 +5,11 @@
   <img src="https://img.shields.io/badge/status-alpha-orange" alt="Alpha">
 </p>
 
+<p align="center">
+  <a href="README.md">English</a> ·
+  <a href="README.zh.md"><b>中文</b></a>
+</p>
+
 <h1 align="center">QMind</h1>
 <p align="center"><b>LLM 驱动的多智能体量化交易系统</b></p>
 <p align="center">多角色协作 · 结构化辩论 · CVRF 持续学习 · 多交易所执行</p>
