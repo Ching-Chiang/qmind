@@ -1,119 +1,214 @@
-<p align="center">
-  <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="Python 3.11+">
-  <img src="https://img.shields.io/badge/tests-623%20passed-green" alt="623 测试通过">
-  <img src="https://img.shields.io/badge/license-MIT-yellow" alt="MIT License">
-  <img src="https://img.shields.io/badge/status-alpha-orange" alt="Alpha">
-</p>
+# QMind
+
+**LLM 驱动的多智能体量化交易系统**
+
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)]()
+[![Tests](https://img.shields.io/badge/tests-621%20passed-green)]()
+[![License](https://img.shields.io/badge/license-MIT-yellow)]()
+[![Status](https://img.shields.io/badge/status-beta-orange)]()
 
 <p align="center">
   <a href="README.md">English</a> ·
   <a href="README.zh.md"><b>中文</b></a>
 </p>
 
-<h1 align="center">QMind</h1>
-<p align="center"><b>LLM 驱动的多智能体量化交易系统</b></p>
-<p align="center">多角色协作 · 结构化辩论 · CVRF 持续学习 · 多交易所执行</p>
+---
+
+QMind 用多个 AI 智能体协作（分析师→辩论→决策→风控），替代单一 LLM 的独断式交易判断；每笔交易后通过 CVRF（概念言语强化学习）自动总结教训，让系统越交易越聪明。
 
 ---
 
-## 概述
-
-QMind 是一个 **LLM 驱动的多智能体量化交易系统**。核心思路：用多个 AI 角色协作（分析→辩论→决策→风控），替代单一 LLM 的独断式交易判断；每笔交易后通过 CVRF（概念言语强化学习）自动总结教训，让系统越交易越聪明。
-
-### 功能特性
+## 功能特性
 
 | 特性 | 说明 |
 |------|------|
-| **多维市场分析** | 4 个分析师并行（技术面/基本面/情绪面/宏观新闻），各自输出结构化 JSON 报告 |
-| **结构化多空辩论** | 分歧驱动：低分歧→直接采信，高分歧→风控降级+置信度校准，不做方向判断 |
-| **结构化交易决策** | 输出 JSON 决策指令（入场/止损/目标/仓位），非 Markdown 研报 |
-| **三角风控审核** | 激进/保守/中立三个角度独立审核，一票否决制 + CVaR 硬约束 |
-| **CVRF 持续学习** | 每笔交易结束 → LLM 总结教训 → 向量记忆存储 → 相似市况自动注入历史教训 |
-| **多交易所执行** | 统一下单/撤单/查单接口，支持 Binance、OKX、Bybit（REST + WebSocket） |
-| **内置策略** | 17 个量化策略（双均线、MACD、RSI、布林带、KDJ、一目均衡等），Freqtrade 三层抽象 |
-| **Walk-Forward 回测** | 时间一致 train/val/test 划分，显式交易成本建模，置信度校准（ECE ≤ 0.05） |
-| **消融实验框架** | 内置单 Agent vs 多 Agent 对比框架，含 Token 成本核算 |
-| **全链路审计日志** | 每个决策记录：时间戳、模型版本、Token 用量、证据链、原始 LLM 响应 |
-
-### 架构
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                      QMind 流水线                              │
-│                                                                │
-│  ┌──────┐  ┌──────────┐  ┌───────┐  ┌──────┐  ┌─────────┐    │
-│  │数据  │→ │分析师    │→ │辩论   │→ │风控  │→ │执行     │    │
-│  │采集  │  │(4角色并行)│  │(多/空) │  │(三角) │  │(CEX/DEX)│    │
-│  └──────┘  └──────────┘  └───────┘  └──────┘  └─────────┘    │
-│                                                │              │
-│                                                ▼              │
-│                                         ┌──────────┐          │
-│                                         │ CVRF     │          │
-│                                         │ 学习循环  │          │
-│                                         └──────────┘          │
-└──────────────────────────────────────────────────────────────┘
-```
+| **4 个分析师并行** | 技术面/基本面/情绪面/宏观新闻，异构 LLM 防回声室 |
+| **分歧驱动辩论** | 低分歧 (δ<0.15) → 跳过辩论；高分歧 → 置信度降级 + 仓位缩减，**不做方向判断** |
+| **结构化 JSON 决策** | 输出可执行交易指令（入场/止损/目标/仓位），非 Markdown 研报 |
+| **三角风控** | 激进/保守/中立独立审核，一票否决 + CVaR 硬约束 |
+| **CVRF 学习闭环** | 交易 → 评估 → LLM 反思 → 向量记忆 → 下次自动注入历史教训 |
+| **20 个内置策略** | Freqtrade 三层抽象（指标 → 入场 → 出场） |
+| **Walk-Forward 回测** | 时间一致划分 + 成本建模 + 置信度校准 (ECE ≤ 0.05) |
+| **P1-P6 合规报告** | 时间一致性、Point-in-Time 数据、多档成本、消融、偏差检测 |
+| **多交易所** | Binance/OKX/Bybit 统一接口 |
+| **全链路审计** | 每条决策记录：时间戳、模型、Token、证据链、LLM 原始响应 |
+| **偏差自动检查** | 5 类偏差检测：前视/幸存者/叙事/目标/成本 |
 
 ## 快速开始
 
-### 安装
-
 ```bash
-# 1. 克隆并安装
-git clone https://github.com/Ching-Chiang/qmind.git
+# 安装
 cd qmind
-pip install -e .
+pip install -e ".[dev,sources,cex]"
 
-# 2. 在 .env 中设置 API Key
-echo "DEEPSEEK_API_KEY=sk-..." >> .env
-# 可选: ANTHROPIC_API_KEY=sk-...  (使用 Claude)
-# 可选: OPENAI_API_KEY=sk-...     (使用 GPT)
+# 设置 API Key
+set DEEPSEEK_API_KEY=sk-...
 
-# 3. 运行分析
-qmind analyze BTC/USDT
+# 分析 BTC/USDT（模拟数据，不实际下单）
+qmind --source mock analyze BTC/USDT
+
+# 使用币安实时数据（墙内需代理）
+qmind --source binance analyze BTC/USDT
 ```
 
-### 基本用法
+## CLI 用法
+
+### 全局选项
+
+```
+qmind [选项] 命令 [参数]
+
+选项:
+  -c, --config PATH   配置文件路径
+  --dry-run / --live  模拟模式（默认 dry-run）
+  --source TEXT       数据源：auto / binance / yfinance / tushare / mock
+  -v, --verbose       显示每个智能体的详细思考过程
+  --help              显示帮助
+```
+
+### 命令详解
+
+#### `analyze` — 一次性分析
 
 ```bash
-# 分析某个标的（默认 dry-run 模式，不实际下单）
+# 简洁模式
 qmind analyze BTC/USDT
 
-# 详细模式（显示分析师推理、辩论过程、风控意见）
+# 详细模式：看分析师推理、辩论、风控意见
 qmind -v analyze BTC/USDT
 
 # 选择数据源
-qmind --source binance analyze BTC/USDT
+qmind --source binance analyze ETH/USDT
 qmind --source yfinance analyze AAPL
-qmind --source mock analyze BTC/USDT      # 模拟数据测试
+qmind --source tushare analyze 000001.SZ
+qmind --source mock analyze BTC/USDT    # 模拟数据，不依赖网络
+
+# 实盘交易（需配置交易所 API Key）
+qmind --live analyze BTC/USDT
+```
+
+详细模式输出示例：
+
+```
+阶段 2/5: 多维分析
+  + [technical] bullish (75%)
+    逻辑: 价格突破布林带上轨和20周期高位...
+    信号: 均线系统 SMA20 > SMA50 > SMA200 (bullish)
+    风险: RSI接近70超买区
+
+阶段 3/5: 多空辩论
+  分歧度 δ=0.247  收敛: False  降级因子: 0.55
+  + 共识: 加密货币缺乏明确内在价值支撑
+  - 分歧: 技术面看多 vs 基本面/消息面看空
+
+阶段 4/5: 交易决策
+  决策: LONG  置信度: 0.42
+  Data-CoT: 价格突破20周期高位...
+  Thesis-CoT: 建议61400入场做多...
+
+阶段 5/5: 三角风控审核
+  PASS [aggressive]   理由: 入场有支撑逻辑...
+  VETO [conservative] 理由: 置信度仅0.42...
+  MODIFY [neutral]    理由: 盈亏比1.6不足2.0
+```
+
+#### `watch` — 持续监控
+
+```bash
+# 监控标的，有交易信号时自动推送通知
+qmind watch BTC/USDT
+qmind watch BTC/USDT ETH/USDT
+qmind watch BTC/USDT --timeframe 4h --interval 300
+```
+
+决策不是 HOLD **且** 风控通过时触发飞书/邮件通知。
+
+#### `backtest` — 回测
+
+```bash
+# 列出所有注册策略
+qmind list --strategies
 
 # 回测策略
 qmind backtest --strategy ma_cross --start 2024-01 --end 2025-06
+```
 
-# 持续监控多个标的
-qmind watch BTC/USDT ETH/USDT
+#### `learn` — CVRF 学习
 
-# 从交易日志中学习
+```bash
+# 查看当前经验库
+qmind learn
+
+# 从交易日志学习
 qmind learn --from-log trades.log
 ```
 
-### CLI 选项
+#### 其他命令
+
+```bash
+qmind price BTC/USDT         # 快速查价
+qmind list --strategies      # 列出 20 个内置策略
+qmind list --audit           # 查看审计摘要
+qmind version                # 版本信息
+```
+
+## 内置策略（20 个）
+
+**均线类:** `ma_cross`, `ma_cross_triple`, `triple_ema`, `macd`, `macd_rsi`
+**反转类:** `rsi`, `cci`, `stoch`, `williams_r`, `kdj`
+**趋势类:** `adx_macd`, `psar`, `ichimoku`
+**波动率类:** `bollinger`, `atr_stop`, `chandelier`
+**成交量类:** `obv`, `mfi`, `volume_breakout`
+**通道类:** `donchian`
+
+## 数据源
+
+| 数据源 | 命令 | 要求 | 说明 |
+|--------|------|------|------|
+| Binance | `--source binance` | 网络（墙内需代理） | 加密货币实时行情 |
+| Yahoo Finance | `--source yfinance` | 网络 | 美股，有限流 |
+| Tushare | `--source tushare` | API token（免费申请） | A 股/港股 |
+| Mock | `--source mock` | 无 | 模拟数据，离线测试 |
+
+## 网络 / 代理
+
+如果网络受限（如中国大陆），设置代理环境变量：
+
+```powershell
+set ALL_PROXY=http://127.0.0.1:7890
+set NO_PROXY=localhost,127.0.0.1,api.deepseek.com
+```
+
+系统自动检测 Windows 系统代理设置。
+
+## 配置
+
+创建 `config.yaml`：
+
+```yaml
+llm:
+  default_model: deepseek-chat
+  deepseek_api_key: "${DEEPSEEK_API_KEY}"   # 或设环境变量
+
+execution:
+  dry_run: true
+  default_exchange: binance
+
+storage:
+  db_path: qmind.db
+
+notification:
+  type: none          # none / feishu / email
+```
+
+支持 DeepSeek、Anthropic（`ANTHROPIC_API_KEY`）、OpenAI（`OPENAI_API_KEY`）。
+
+## 架构
 
 ```
-用法: qmind [选项] 命令 [参数]...
-
-选项:
-  --config PATH          配置文件路径
-  --source TEXT          数据源 (binance, yfinance, tushare, mock)
-  -v, --verbose          显示详细推理（分析师、辩论、风控意见）
-  --help                 显示帮助信息
-
-命令:
-  analyze    分析标的，输出交易决策
-  backtest   运行策略回测
-  watch      持续监控标的
-  learn      从交易日志提取教训到经验库
-  exec       执行交易决策（需要 --live）
+数据采集 → 4分析师并行 → 分歧驱动辩论 → Financial CoT 决策 → 三角风控 → 执行/拒绝
+                                                                        ↓
+                                                                   CVRF 学习
 ```
 
 ## 项目结构
@@ -121,90 +216,45 @@ qmind learn --from-log trades.log
 ```
 qmind/
 ├── agents/               # 多角色 Agent
-│   ├── analysts/         #   技术面/基本面/情绪面/新闻 分析师
+│   ├── analysts/         #   技术面/基本面/情绪面/新闻
 │   ├── researchers/      #   多空辩论（Trust / Skeptic / Leader）
-│   ├── risk.py           #   三角风控（激进/保守/中立）
-│   ├── protocol.py       #   Agent 间通信 JSON Schema
-│   └── single_agent.py   #   单 Agent 基线对比
+│   ├── risk.py           #   三角风控 + CVaR
+│   ├── protocol.py       #   通信 JSON Schema
+│   └── single_agent.py   #   单 Agent 基线
 ├── graph/                # LangGraph 流水线
-│   ├── pipeline.py       #   五阶段 StateGraph
-│   ├── routers.py        #   条件路由（分歧判断、风控否决）
+│   ├── pipeline.py       #   六阶段 StateGraph（含 CVRF 节点）
+│   ├── routers.py        #   条件路由
 │   └── state.py          #   AgentState TypedDict
 ├── llm/                  # LLM 调用层
-│   ├── client.py         #   Anthropic / OpenAI / DeepSeek 统一客户端
-│   ├── router.py         #   双 LLM 路由（推理用强模型，工具调用用快模型）
+│   ├── client.py         #   Anthropic/OpenAI/DeepSeek 统一客户端
+│   ├── router.py         #   双 LLM 路由
 │   └── structured.py     #   Pydantic 结构化输出 + 自动重试
-├── data/                 # 数据源
-│   └── sources/          #   binance, yfinance, tushare, mock
-├── execution/            # 执行层
-│   ├── cex/              #   Binance, OKX, Bybit
-│   ├── dex/              #   EVM, Solana（框架）
-│   └── dry_run.py        #   模拟交易模式
-├── learning/             # CVRF 学习系统
-│   ├── cvrf.py           #   LLM 反思 → 教训
-│   ├── memory.py         #   SQLite 向量记忆 + 相似度检索
-│   └── injector.py       #   教训注入到 Agent prompt
-├── backtest/             # 回测框架
-│   ├── partition.py      #   Walk-forward 时间划分
-│   ├── cost_model.py     #   交易成本建模（佣金/滑点/价差）
-│   ├── calibration.py    #   置信度校准（ECE + Platt scaling）
-│   └── ablation.py       #   单 Agent vs 多 Agent 对比
-├── strategies/           # 策略工厂
-│   └── builtin/          #   17 个内置策略
-├── tools/                # 工具层（JSON Schema）
-│   ├── market_data.py    #   K线、深度、资金费率查询
-│   └── portfolio.py      #   持仓、余额、PnL 查询
-├── config.py             # YAML 配置 + 环境变量覆写
-├── main.py               # CLI 入口（click）
-└── audit_log.py          # 全链路审计日志
+├── data/sources/         # binance, yfinance, tushare, mock
+├── execution/            # 执行层（Binance/OKX/Bybit + dry_run）
+├── learning/             # CVRF 学习：反思、记忆（SQLite）、注入
+├── backtest/             # 回测框架：分区、成本、校准、消融、报告
+├── strategies/builtin/   # 20 个策略
+├── audit/                # 偏差检查器（5 类偏差）
+├── main.py               # CLI 入口
+└── config.py             # 配置管理
 ```
 
-## 支持的 LLM 模型
+## 测试
 
-| 供应商 | 模型 | 用途 |
-|--------|------|------|
-| **DeepSeek** | `deepseek-chat`, `deepseek-reasoner` | 默认（性价比最高） |
-| **Anthropic** | `claude-sonnet-4-6`, `claude-opus-4-8` | 深度推理（分析师、风控） |
-| **OpenAI** | `gpt-4o`, `gpt-4o-mini` | 快速工具调用（交易员） |
-
-通过 `config.yaml` 或 `QMIND_LLM_MODEL` 环境变量配置。
+```bash
+make test       # 621 个测试，19.75s
+make lint       # ruff 检查
+make coverage   # 测试覆盖率 72%
+```
 
 ## 设计原则
 
-本项目基于 **18 篇同行评审论文**（TradingAgents、FINCON、TiMi、FinDebate 等）关于 LLM 金融 Agent 的研究结论。关键设计决策：
+基于 18 篇同行评审论文（TradingAgents、FINCON、TiMi、FinDebate、Alpha Illusion 等）的 LLM 金融 Agent 研究结论：
 
-1. **辩论校正偏差，而非生成 alpha** — 分歧触发风控降级而非改变方向
-2. **LLM 置信度 ≠ 可交易概率** — 置信度独立校准（ECE ≤ 0.05）后才用于仓位计算
-3. **仓位计算不由 LLM 决定** — 由风控模块使用 CVaR 约束独立处理
-4. **始终报告净 PnL** — 显式建模交易成本（佣金+滑点+价差+Gas 费）
-5. **时间一致性强制** — Point-in-Time 数据控制，禁止前视偏差
+1. **辩论校正偏差，非生成 alpha** — 分歧触发风控降级，绝不改变方向
+2. **LLM 置信度 ≠ 可交易概率** — 独立校准（ECE ≤ 0.05）后才用于仓位计算
+3. **仓位不由 LLM 决定** — 风控模块用 CVaR 约束独立处理
+4. **始终报告净 PnL** — 佣金+滑点+价差+Gas 费显式建模
+5. **时间一致性强制** — Point-in-Time 数据控制，`TimeGuard` 禁止前视偏差
 
-## 开发
-
-```bash
-# 安装开发依赖
-pip install -e ".[dev]"
-
-# 运行测试
-make test          # 623 个测试
-make lint          # ruff 检查
-make coverage      # 测试覆盖率
-
-# 格式化代码
-make format
-```
-
-## 技术选型
-
-| 层面 | 选型 | 原因 |
-|------|------|------|
-| 编排 | LangGraph StateGraph | 状态持久化、条件路由、可恢复执行 |
-| LLM 调用 | Anthropic/OpenAI SDK 原生 | 少一层抽象，追 bug 更快 |
-| 结构化输出 | Pydantic + `model_validate_json()` | 强类型校验，不符合自动重试 |
-| 状态持久化 | SQLite (`langgraph-checkpoint-sqlite`) | 轻量、零运维 |
-| 记忆系统 | SQLite 自建向量检索 | CVRF 高度定制，通用模块改起来更累 |
-| 配置 | YAML + 环境变量覆写 + python-dotenv | 敏感信息不入库 |
-
-## 协议
-
-MIT
+## MIT 协议

@@ -1,121 +1,214 @@
-<p align="center">
-  <img src="https://img.shields.io/badge/python-3.11%2B-blue" alt="Python 3.11+">
-  <img src="https://img.shields.io/badge/tests-623%20passed-green" alt="623 tests passed">
-  <img src="https://img.shields.io/badge/license-MIT-yellow" alt="MIT License">
-  <img src="https://img.shields.io/badge/status-alpha-orange" alt="Alpha">
-</p>
+# QMind
+
+**LLM-Driven Multi-Agent Quantitative Trading System**
+
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue)]()
+[![Tests](https://img.shields.io/badge/tests-621%20passed-green)]()
+[![License](https://img.shields.io/badge/license-MIT-yellow)]()
+[![Status](https://img.shields.io/badge/status-beta-orange)]()
 
 <p align="center">
   <a href="README.md"><b>English</b></a> ·
   <a href="README.zh.md">中文</a>
 </p>
 
-<h1 align="center">QMind</h1>
-<p align="center"><b>LLM-Driven Multi-Agent Quantitative Trading System</b></p>
-<p align="center">多智能体协作 · 结构化辩论 · CVRF 持续学习 · 多交易所执行</p>
+---
+
+QMind orchestrates multiple AI agents—analysts, researchers, risk managers—that **analyze, debate, decide, and learn** collaboratively through a structured LangGraph pipeline, then **continuously improve** via CVRF (Conceptual Verbal Reinforcement Learning).
 
 ---
 
-## Overview
-
-QMind is a **multi-agent quantitative trading system** powered by Large Language Models. Instead of relying on a single LLM for trading decisions, QMind orchestrates multiple AI agents with distinct roles—analysts, researchers, risk managers—that **analyze, debate, decide, and learn** collaboratively through a structured LangGraph pipeline.
-
-### Key Features
+## Features
 
 | Feature | Description |
 |---------|-------------|
-| **Multi-Dimensional Analysis** | 4 parallel analysts (Technical, Fundamental, Sentiment, Macro/News) each produce structured JSON reports |
-| **Structured Bull-Bear Debate** | Disagreement-driven: low分歧 → direct consensus; high分歧 → risk降级 with confidence calibration |
-| **Structured Trading Decisions** | JSON decision指令 (entry, stop-loss, take-profit, position size), not Markdown reports |
-| **Triangular Risk Control** | Three independent reviewers (Aggressive / Conservative / Neutral) with one-veto否决 power + CVaR hard constraints |
-| **CVRF Continuous Learning** | Every trade triggers LLM reflection → natural-language lessons → vector memory → auto-injection into future analysis prompts |
-| **Multi-Exchange Execution** | Unified place/cancel/query interface for Binance, OKX, Bybit (REST + WebSocket) |
-| **Built-in Strategies** | 17 quantitative strategies (ma_cross, MACD, RSI, Bollinger, KDJ, Ichimoku, etc.) with Freqtrade-style 3-layer abstraction |
-| **Walk-Forward Backtesting** | Time-consistent train/val/test partitions, explicit transaction cost modeling, calibration (ECE ≤ 0.05) |
-| **Ablation Framework** | Built-in single-agent vs multi-agent comparisons with token cost accounting |
-| **Full Audit Trail** | Every decision logged: timestamp, model version, token usage, evidence chain, original LLM response |
-
-### Architecture
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                      QMind Pipeline                            │
-│                                                                │
-│  ┌──────┐  ┌──────────┐  ┌───────┐  ┌──────┐  ┌─────────┐    │
-│  │Data  │→ │Analysts  │→ │Debate │→ │Risk  │→ │Execution │    │
-│  │Collect│  │(4 roles) │  │(Bull/ │  │Control│  │(CEX/DEX) │    │
-│  │      │  │ parallel │  │ Bear)  │  │(3-way)│  │ dry-run  │    │
-│  └──────┘  └──────────┘  └───────┘  └──────┘  └─────────┘    │
-│                                                │              │
-│                                                ▼              │
-│                                         ┌──────────┐          │
-│                                         │ CVRF     │          │
-│                                         │ Learning │          │
-│                                         │ (闭环)    │          │
-│                                         └──────────┘          │
-└──────────────────────────────────────────────────────────────┘
-```
+| **4 Parallel Analysts** | Technical, Fundamental, Sentiment, Macro/News — each with heterogeneous LLM assignments to prevent echo chambers |
+| **Disagreement-Driven Debate** | Low disagreement (δ < 0.15) → skip debate; high disagreement → confidence downgrade + position reduction, **never changes direction** |
+| **Structured JSON Decisions** | Outputs executable trade instructions (entry, stop-loss, take-profit, position size), not Markdown reports |
+| **Triangular Risk Control** | Aggressive / Conservative / Neutral reviewers, one-vote veto + CVaR hard constraints |
+| **CVRF Learning Loop** | Trade → evaluate → LLM reflection → vector memory → auto-injection into future analysis prompts |
+| **20 Built-in Strategies** | Freqtrade-style 3-layer abstraction (`indicators → entry → exit`) |
+| **Walk-Forward Backtesting** | Chronological train/val/test partitions, explicit cost modeling, confidence calibration (ECE ≤ 0.05) |
+| **P1-P6 Compliance** | Full Alpha Illusion protocol reports: time consistency, point-in-time data, cost tiers, ablation, bias detection |
+| **Multi-Exchange** | Binance, OKX, Bybit via unified `ExchangeBase` interface |
+| **Full Audit Trail** | Every decision logged: timestamp, model, token usage, evidence chain, LLM response |
 
 ## Quick Start
 
-### Installation
-
 ```bash
-# 1. Clone & install
-git clone https://github.com/Ching-Chiang/qmind.git
+# Install
 cd qmind
-pip install -e .
+pip install -e ".[dev,sources,cex]"    # full install with all extras
 
-# 2. Set API keys in .env
-echo "DEEPSEEK_API_KEY=sk-..." >> .env
-# Optional: ANTHROPIC_API_KEY=sk-...  (for Claude)
-# Optional: OPENAI_API_KEY=sk-...     (for GPT)
+# Set API key
+export DEEPSEEK_API_KEY="sk-..."
 
-# 3. Run analysis
-qmind analyze BTC/USDT
+# Analyze BTC/USDT (mock data, dry-run, no real trading)
+qmind --source mock analyze BTC/USDT
+
+# With real Binance data (requires proxy if behind firewall)
+qmind --source binance analyze BTC/USDT
 ```
 
-### Basic Usage
+## CLI Usage
+
+### Options
+
+```
+qmind [OPTIONS] COMMAND [ARGS]...
+
+Options:
+  -c, --config PATH   Config file path
+  --dry-run / --live  Simulation mode (default: dry-run)
+  --source TEXT       Data source: auto / binance / yfinance / tushare / mock
+  -v, --verbose       Show detailed reasoning of each agent
+  --help              Show this message
+```
+
+### Commands
+
+#### `analyze` — One-shot analysis
 
 ```bash
-# Analyze a symbol (dry-run by default)
+# Default (concise summary)
 qmind analyze BTC/USDT
 
-# Verbose mode (show analyst reasoning, debate, risk opinions)
+# Verbose: see analyst reasoning, debate, risk opinions
 qmind -v analyze BTC/USDT
 
 # Choose data source
-qmind --source binance analyze BTC/USDT
+qmind --source binance analyze ETH/USDT
 qmind --source yfinance analyze AAPL
-qmind --source mock analyze BTC/USDT      # synthetic data for testing
+qmind --source tushare analyze 000001.SZ
+qmind --source mock analyze BTC/USDT    # synthetic data, no network needed
+
+# Live trading (requires exchange API key)
+qmind --live analyze BTC/USDT
+```
+
+Verbose mode output example:
+
+```
+阶段 2/5: 多维分析
+  + [technical] bullish (75%)
+    逻辑: 价格突破布林带上轨和20周期高位...
+    信号: 均线系统 SMA20 > SMA50 > SMA200 (bullish)
+    风险: RSI接近70超买区
+
+阶段 3/5: 多空辩论
+  分歧度 δ=0.247  收敛: False  降级因子: 0.55
+  + 共识: 加密货币缺乏明确内在价值支撑
+  - 分歧: 技术面看多 vs 基本面/消息面看空
+
+阶段 4/5: 交易决策
+  决策: LONG  置信度: 0.42
+  Data-CoT: 价格突破20周期高位...
+  Thesis-CoT: 建议61400入场做多...
+
+阶段 5/5: 三角风控审核
+  PASS [aggressive]   理由: 入场有支撑逻辑...
+  VETO [conservative] 理由: 置信度仅0.42...
+  MODIFY [neutral]    理由: 盈亏比1.6不足2.0
+```
+
+#### `watch` — Continuous monitoring
+
+```bash
+# Monitor symbols, push signal on trade decision
+qmind watch BTC/USDT
+qmind watch BTC/USDT ETH/USDT
+qmind watch BTC/USDT --timeframe 4h --interval 300
+```
+
+Triggers notification (Feishu/email) when decision ≠ HOLD and risk approved.
+
+#### `backtest` — Strategy backtest
+
+```bash
+# List all registered strategies
+qmind list --strategies
 
 # Backtest a strategy
 qmind backtest --strategy ma_cross --start 2024-01 --end 2025-06
+```
 
-# Watch symbols (continuous monitoring)
-qmind watch BTC/USDT ETH/USDT
+#### `learn` — CVRF learning
 
-# Learn from past trades
+```bash
+# View current memory store
+qmind learn
+
+# Learn from trade log
 qmind learn --from-log trades.log
 ```
 
-### CLI Options
+#### Other commands
+
+```bash
+qmind price BTC/USDT         # Quick price check
+qmind list --strategies      # List all 20 built-in strategies
+qmind list --audit           # View audit summary
+qmind version                # Version info
+```
+
+## Built-in Strategies (20)
+
+**Moving Average:** `ma_cross`, `ma_cross_triple`, `triple_ema`, `macd`, `macd_rsi`
+**Reversal:** `rsi`, `cci`, `stoch`, `williams_r`, `kdj`
+**Trend:** `adx_macd`, `psar`, `ichimoku`
+**Volatility:** `bollinger`, `atr_stop`, `chandelier`
+**Volume:** `obv`, `mfi`, `volume_breakout`
+**Channel:** `donchian`
+
+## Data Sources
+
+| Source | Command | Requires | Notes |
+|--------|---------|----------|-------|
+| Binance | `--source binance` | Network → proxy for CN firewall | Real crypto data |
+| Yahoo Finance | `--source yfinance` | Network | US stocks, rate-limited |
+| Tushare | `--source tushare` | API token (free) | A-share / HK stocks |
+| Mock | `--source mock` | None | Synthetic data for testing |
+
+## Configuration
+
+Create `config.yaml`:
+
+```yaml
+llm:
+  default_model: deepseek-chat
+  deepseek_api_key: "${DEEPSEEK_API_KEY}"   # or set env var
+
+execution:
+  dry_run: true
+  default_exchange: binance
+
+storage:
+  db_path: qmind.db
+
+notification:
+  type: none          # none / feishu / email
+```
+
+Supports Anthropic (`ANTHROPIC_API_KEY`), OpenAI (`OPENAI_API_KEY`), and DeepSeek (`DEEPSEEK_API_KEY`).
+
+## Network / Proxy
+
+If behind a firewall (common in China), set these environment variables:
+
+```bash
+export ALL_PROXY="http://127.0.0.1:7890"    # or your proxy address
+export NO_PROXY="localhost,127.0.0.1,api.deepseek.com"
+```
+
+The system auto-detects Windows system proxy from registry.
+
+## Architecture
 
 ```
-Usage: qmind [OPTIONS] COMMAND [ARGS]...
-
-Options:
-  --config PATH          Config file path
-  --source TEXT          Data source (binance, yfinance, tushare, mock)
-  -v, --verbose          Show detailed reasoning (analyst, debate, risk)
-  --help                 Show this message
-
-Commands:
-  analyze    Analyze a symbol and output trading decision
-  backtest   Run strategy backtest
-  watch      Monitor symbols continuously
-  learn      Extract lessons from trade logs into memory
-  exec       Execute a trading decision (requires --live)
+collect_data → analyze (4 agents parallel) → debate (disagreement-driven)
+→ decide (financial CoT) → review_risk (triangular) → execute / reject
+                                                          ↓
+                                                     CVRF learn
 ```
 
 ## Project Structure
@@ -129,72 +222,40 @@ qmind/
 │   ├── protocol.py       #   Inter-agent JSON schemas
 │   └── single_agent.py   #   Single-agent baseline
 ├── graph/                # LangGraph pipeline
-│   ├── pipeline.py       #   5-stage StateGraph
-│   ├── routers.py        #   Conditional routing (disagreement, risk veto)
+│   ├── pipeline.py       #   6-stage StateGraph (incl. CVRF learn node)
+│   ├── routers.py        #   Conditional routing
 │   └── state.py          #   AgentState TypedDict
-├── llm/                  # LLM invocation layer
+├── llm/                  # LLM invocation
 │   ├── client.py         #   Anthropic / OpenAI / DeepSeek unified client
-│   ├── router.py         #   Dual-LLM routing (reasoning vs tool calls)
-│   └── structured.py     #   Pydantic structured output with auto-retry
-├── data/                 # Data sources
-│   └── sources/          #   binance, yfinance, tushare, mock
-├── execution/            # Exchange layer
-│   ├── cex/              #   Binance, OKX, Bybit
-│   ├── dex/              #   EVM, Solana (skeleton)
-│   └── dry_run.py        #   Simulation mode
-├── learning/             # CVRF learning system
-│   ├── cvrf.py           #   LLM reflection → lessons
-│   ├── memory.py         #   SQLite vector memory + similarity search
-│   └── injector.py       #   Lesson injection into agent prompts
-├── backtest/             # Backtesting framework
-│   ├── partition.py      #   Walk-forward time partitioning
-│   ├── cost_model.py     #   Transaction cost modeling (commission/slippage/spread)
-│   ├── calibration.py    #   Confidence calibration (ECE + Platt scaling)
-│   └── ablation.py       #   Single-agent vs multi-agent comparison
-├── strategies/           # Strategy factory
-│   └── builtin/          #   17 built-in strategies
-├── tools/                # Tool layer (JSON Schema)
-│   ├── market_data.py    #   K-line, orderbook, funding rate queries
-│   └── portfolio.py      #   Position, balance, PnL queries
-├── config.py             # YAML config + env var override
+│   ├── router.py         #   Dual-LLM routing
+│   └── structured.py     #   Pydantic structured output + auto-retry
+├── data/sources/         # binance, yfinance, tushare, mock
+├── execution/            # Exchange layer (Binance/OKX/Bybit + dry_run)
+├── learning/             # CVRF: reflection, memory (SQLite), injector
+├── backtest/             # partition, cost_model, calibration, ablation, p_report
+├── strategies/builtin/   # 20 strategies
+├── audit/                # Bias checker (5-class bias detection)
 ├── main.py               # CLI entry point (click)
-└── audit_log.py          # Full decision audit trail
+└── config.py             # YAML config
 ```
 
-## Supported Models
+## Tests
 
-| Provider | Models | Use Case |
-|----------|--------|----------|
-| **DeepSeek** | `deepseek-chat`, `deepseek-reasoner` | Default (best cost-performance) |
-| **Anthropic** | `claude-sonnet-4-6`, `claude-opus-4-8` | Deep reasoning (analysts, risk) |
-| **OpenAI** | `gpt-4o`, `gpt-4o-mini` | Fast tool calls (trader) |
-
-Configure via `config.yaml` or `QMIND_LLM_MODEL` env var.
+```bash
+make test       # 621 tests, 19.75s
+make lint       # ruff check
+make coverage   # pytest-cov (72% coverage)
+```
 
 ## Design Principles
 
-This project is grounded in findings from **18 peer-reviewed papers** (TradingAgents, FINCON, TiMi, FinDebate, and more) on LLM financial agents. Key design choices:
+Based on findings from 18 peer-reviewed papers on LLM financial agents (TradingAgents, FINCON, TiMi, FinDebate, Alpha Illusion, et al.):
 
-1. **Debate corrects bias, not generates alpha** — Disagreement triggers risk降级, not direction changes
-2. **LLM confidence ≠ tradeable probability** — Confidence is independently calibrated (ECE ≤ 0.05)
-3. **Position sizing is NOT LLM-driven** — Handled by the risk module with CVaR constraints
-4. **Always report Net PnL** — Transaction costs (commission + slippage + spread + gas) are explicitly modeled
-5. **Time-consistency enforced** — Point-in-time data control, no look-ahead
-
-## Development
-
-```bash
-# Install dev dependencies
-pip install -e ".[dev]"
-
-# Run tests
-make test          # 623 tests
-make lint          # ruff check
-make coverage      # pytest-cov
-
-# Format code
-make format
-```
+1. **Debate corrects bias, not generates alpha** — triggers risk downgrade, never changes direction
+2. **LLM confidence ≠ tradeable probability** — independently calibrated (ECE ≤ 0.05)
+3. **Position sizing is NOT LLM-driven** — handled by risk module with CVaR constraints
+4. **Always report Net PnL** — commission + slippage + spread + gas explicitly modeled
+5. **Time-consistency enforced** — Point-in-Time data control via `TimeGuard`, no look-ahead
 
 ## License
 

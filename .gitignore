@@ -36,6 +36,9 @@ logs/
 # Reports
 reports/
 
+# Project documentation (local only)
+CLAUDE.md
+
 # Coverage
 .coverage
 
