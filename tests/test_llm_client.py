@@ -86,9 +86,9 @@ class TestLLMRouter:
     def test_router_config(self):
         client = LLMClient()
         router = LLMRouter(client)
-        assert router._config["analysis"]["model"] == "claude-sonnet-4-6"
-        assert router._config["tool_call"]["model"] == "gpt-4o-mini"
-        assert router._config["risk_conservative"]["model"] == "claude-opus-4-8"
+        assert router._config["analysis"]["model"] == "deepseek-chat"
+        assert router._config["tool_call"]["model"] == "deepseek-chat"
+        assert router._config["risk_conservative"]["model"] == "deepseek-chat"
 
     def test_set_config(self):
         client = LLMClient()

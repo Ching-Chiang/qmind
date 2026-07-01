@@ -8,6 +8,7 @@ import pytest
 
 from qmind.agents.analysts.runner import AnalystRunner
 from qmind.agents.analysts.technical import TechnicalAnalyst
+from qmind.agents.protocol import TechnicalReport
 from qmind.graph.state import OHLCV, AnalystReport, MarketData
 from qmind.llm.client import LLMClient
 
@@ -19,7 +20,12 @@ class TestTechnicalAnalyst:
 
     async def test_empty_klines_returns_report(self, analyst):
         md = MarketData(symbol="TEST/USDT")
-        result = await analyst.analyze(md)
+        with patch.object(analyst.parser, "parse", new_callable=AsyncMock) as mock_parse:
+            mock_parse.return_value = TechnicalReport(
+                analyst="technical", stance="neutral", confidence=0.5,
+                core_reason="test", key_signals=[], risk_factors=[],
+            )
+            result = await analyst.analyze(md)
         assert result.analyst == "technical"
         assert result.stance in ("bullish", "neutral", "bearish")
 

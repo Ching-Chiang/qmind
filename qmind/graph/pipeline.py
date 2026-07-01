@@ -61,9 +61,11 @@ class QMindPipeline:
         cvrf_pipeline: CVRFPipeline | None = None,
         memory_store: MemoryStore | None = None,
         cvrf_reflection: CVRFReflection | None = None,
+        data_source: str = "auto",
     ):
         self.llm_client = llm_client
         self.exchange = exchange
+        self.data_source = data_source
         self.analyst_runner = AnalystRunner(llm_client)
         self.trust_agent = TrustAgent(llm_client)
         self.skeptic_agent = SkepticAgent(llm_client)
@@ -171,7 +173,7 @@ class QMindPipeline:
         from qmind.data.sources.factory import DataSourceFactory
         factory = DataSourceFactory()
         try:
-            market_data = await factory.fetch_market_data(symbol, interval=timeframe)
+            market_data = await factory.fetch_market_data(symbol, source=self.data_source, interval=timeframe)
         except Exception as e:
             logger.warning(f"数据采集失败: {e}，使用空数据")
             market_data = MarketData(symbol=symbol)

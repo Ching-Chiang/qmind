@@ -20,17 +20,17 @@ class LLMRouter:
     def __init__(self, client: LLMClient):
         self.client = client
         self._config: dict[str, dict[str, Any]] = {
-            "analysis": {"model": "claude-sonnet-4-6", "temperature": 0.3, "max_tokens": 4096},
-            "debate": {"model": "gpt-4o", "temperature": 0.5, "max_tokens": 4096},
-            "decision": {"model": "claude-sonnet-4-6", "temperature": 0.2, "max_tokens": 4096},
-            "risk_review": {"model": "claude-sonnet-4-6", "temperature": 0.3, "max_tokens": 2048},
-            "risk_conservative": {"model": "claude-opus-4-8", "temperature": 0.2, "max_tokens": 2048},
+            "analysis": {"model": "deepseek-chat", "temperature": 0.3, "max_tokens": 4096},
+            "debate": {"model": "deepseek-chat", "temperature": 0.5, "max_tokens": 4096},
+            "decision": {"model": "deepseek-chat", "temperature": 0.2, "max_tokens": 4096},
+            "risk_review": {"model": "deepseek-chat", "temperature": 0.3, "max_tokens": 2048},
+            "risk_conservative": {"model": "deepseek-chat", "temperature": 0.2, "max_tokens": 2048},
             "cvar_check": {"model": "deepseek-chat", "temperature": 0.1, "max_tokens": 1024},
-            "tool_call": {"model": "gpt-4o-mini", "temperature": 0.1, "max_tokens": 1024},
+            "tool_call": {"model": "deepseek-chat", "temperature": 0.1, "max_tokens": 1024},
             "classification": {"model": "deepseek-chat", "temperature": 0.1, "max_tokens": 512},
-            "reflection": {"model": "claude-opus-4-8", "temperature": 0.3, "max_tokens": 2048},
-            "data_extraction": {"model": "gpt-4o-mini", "temperature": 0.1, "max_tokens": 2048},
-            "cvrf_learning": {"model": "claude-sonnet-4-6", "temperature": 0.5, "max_tokens": 2048},
+            "reflection": {"model": "deepseek-chat", "temperature": 0.3, "max_tokens": 2048},
+            "data_extraction": {"model": "deepseek-chat", "temperature": 0.1, "max_tokens": 2048},
+            "cvrf_learning": {"model": "deepseek-chat", "temperature": 0.5, "max_tokens": 2048},
         }
 
     async def route(

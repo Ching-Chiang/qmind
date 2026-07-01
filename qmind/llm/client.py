@@ -164,9 +164,11 @@ class LLMClient:
     def deepseek(self) -> AsyncOpenAI:
         if self._deepseek_client is None:
             api_key = os.getenv("DEEPSEEK_API_KEY", "")
+            import httpx
             self._deepseek_client = AsyncOpenAI(
                 api_key=api_key,
                 base_url="https://api.deepseek.com",
+                http_client=httpx.AsyncClient(proxy=None),
             )
         return self._deepseek_client
 

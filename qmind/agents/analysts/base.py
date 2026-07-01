@@ -17,7 +17,7 @@ class BaseAnalyst(ABC):
     def __init__(
         self,
         llm_client: LLMClient,
-        model: str = "claude-sonnet-4-6",
+        model: str = "deepseek-chat",
         temperature: float = 0.3,
     ):
         self.parser = StructuredParser(

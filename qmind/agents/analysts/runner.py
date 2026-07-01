@@ -22,10 +22,10 @@ class AnalystRunner:
         self.timeout = timeout
         # 异构 LLM 配置 — 防回声室
         self.analysts = [
-            TechnicalAnalyst(llm_client, model="claude-sonnet-4-6", temperature=0.3),
-            FundamentalAnalyst(llm_client, model="gpt-4o", temperature=0.4),
+            TechnicalAnalyst(llm_client, model="deepseek-chat", temperature=0.3),
+            FundamentalAnalyst(llm_client, model="deepseek-chat", temperature=0.4),
             SentimentAnalyst(llm_client, model="deepseek-chat", temperature=0.3),
-            NewsAnalyst(llm_client, model="claude-sonnet-4-6", temperature=0.5),
+            NewsAnalyst(llm_client, model="deepseek-chat", temperature=0.5),
         ]
 
     async def run_all(self, market_data: MarketData) -> list[AnalystReport]:

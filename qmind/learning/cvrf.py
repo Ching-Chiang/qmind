@@ -78,7 +78,7 @@ CVRF_REFLECTION_PROMPT = """## CVRF 交易反思
 class CVRFReflection:
     """CVRF 反思引擎"""
 
-    def __init__(self, llm_client: LLMClient, model: str = "claude-sonnet-4-6"):
+    def __init__(self, llm_client: LLMClient, model: str = "deepseek-chat"):
         self.parser = StructuredParser(
             client=llm_client, model=model, caller="cvrf_reflection",
         )

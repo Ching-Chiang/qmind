@@ -32,8 +32,9 @@ console = Console()
 @click.group()
 @click.option("--config", "-c", type=click.Path(exists=True), help="配置文件路径")
 @click.option("--dry-run/--live", default=True, help="dryRun 模式（默认开启）")
+@click.option("--source", default="auto", help="数据源: auto / yfinance / tushare / mock")
 @click.pass_context
-def cli(ctx: click.Context, config: str | None, dry_run: bool) -> None:
+def cli(ctx: click.Context, config: str | None, dry_run: bool, source: str) -> None:
     """QMind — 量化交易多智能体系统"""
     ctx.ensure_object(dict)
     cfg = Config(path=Path(config) if config else None)
@@ -47,7 +48,7 @@ def cli(ctx: click.Context, config: str | None, dry_run: bool) -> None:
         dry_run=dry_run,
     )
     ctx.obj["audit"] = AuditLogger(db_path=cfg.db_path)
-    ctx.obj["pipeline"] = QMindPipeline(ctx.obj["llm_client"], exchange=exchange)
+    ctx.obj["pipeline"] = QMindPipeline(ctx.obj["llm_client"], exchange=exchange, data_source=source)
     ctx.obj["exchange"] = exchange
     ctx.obj["notifier"] = Notifier(
         feishu_webhook=cfg.get("notification.webhook_url", ""),

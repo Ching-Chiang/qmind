@@ -59,13 +59,13 @@ CVAR_PROMPT = """基于 FINCON 论文的 CVaR 约束计算。
 class TriangleRiskControl:
     """三角风控审核器"""
 
-    def __init__(self, llm_client: LLMClient):
+    def __init__(self, llm_client: LLMClient, model: str = "deepseek-chat"):
         self.aggressive_parser = StructuredParser(
-            client=llm_client, model="claude-sonnet-4-6", caller="risk_aggressive")
+            client=llm_client, model=model, caller="risk_aggressive")
         self.conservative_parser = StructuredParser(
-            client=llm_client, model="claude-opus-4-8", caller="risk_conservative")
+            client=llm_client, model=model, caller="risk_conservative")
         self.neutral_parser = StructuredParser(
-            client=llm_client, model="claude-sonnet-4-6", caller="risk_neutral")
+            client=llm_client, model=model, caller="risk_neutral")
 
     def _build_prompt(self, decision: TradeDecision, market_data: MarketData) -> str:
         current_price = 0

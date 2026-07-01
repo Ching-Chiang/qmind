@@ -20,7 +20,7 @@ class SingleTradingAgent:
     def __init__(
         self,
         llm_client: LLMClient,
-        model: str = "claude-sonnet-4-6",
+        model: str = "deepseek-chat",
     ):
         self.parser = StructuredParser(
             client=llm_client,

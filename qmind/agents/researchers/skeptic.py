@@ -33,7 +33,7 @@ SKEPTIC_SYSTEM_PROMPT = """你是一个 Skeptic Agent（怀疑论者）。
 class SkepticAgent:
     """Skeptic Agent — 只找漏洞，不换方向"""
 
-    def __init__(self, llm_client: LLMClient, model: str = "claude-sonnet-4-6"):
+    def __init__(self, llm_client: LLMClient, model: str = "deepseek-chat"):
         self.parser = StructuredParser(client=llm_client, model=model, caller="skeptic_agent")
 
     async def scrutinize(

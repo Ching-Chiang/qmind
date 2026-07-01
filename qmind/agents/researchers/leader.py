@@ -31,7 +31,7 @@ LEADER_SYSTEM_PROMPT = """你是一个 Debate Leader（辩论主导者）。
 class DebateLeader:
     """Debate Leader — 输出置信度降级和仓位缩减"""
 
-    def __init__(self, llm_client: LLMClient, model: str = "claude-opus-4-8"):
+    def __init__(self, llm_client: LLMClient, model: str = "deepseek-chat"):
         self.parser = StructuredParser(client=llm_client, model=model, caller="debate_leader")
 
     async def lead(

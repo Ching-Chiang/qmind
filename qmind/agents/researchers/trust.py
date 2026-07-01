@@ -27,7 +27,7 @@ TRUST_SYSTEM_PROMPT = """你是一个 Trust Agent（信任审计员）。
 class TrustAgent:
     """信任审计 Agent — 验证论据质量"""
 
-    def __init__(self, llm_client: LLMClient, model: str = "gpt-4o"):
+    def __init__(self, llm_client: LLMClient, model: str = "deepseek-chat"):
         self.parser = StructuredParser(client=llm_client, model=model, caller="trust_agent")
 
     async def verify(
