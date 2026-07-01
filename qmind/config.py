@@ -27,7 +27,7 @@ class Config:
 
     def _load(self) -> dict[str, Any]:
         if self.path and self.path.exists():
-            with open(self.path) as f:
+            with open(self.path, encoding="utf-8") as f:
                 return yaml.safe_load(f) or {}
         return {}
 
