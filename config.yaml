@@ -1,7 +1,7 @@
 # QMind 配置
 llm:
   default_model: deepseek-chat
-  deepseek_api_key: "${DEEPSEEK_API_KEY}"
+  deepseek_api_key: "${DEEPSEEK_API_KEY}"  # 从环境变量读取，勿硬编码
 
 execution:
   dry_run: true
