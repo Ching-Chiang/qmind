@@ -36,7 +36,9 @@ class ExchangeFactory:
             return OKXExchange(
                 api_key=config.get("api_key", ""),
                 api_secret=config.get("api_secret", ""),
+                passphrase=config.get("passphrase", ""),
                 dry_run=False,
+                testnet=config.get("testnet", True),
             )
         elif name == "bybit":
             from qmind.execution.cex.bybit import BybitExchange

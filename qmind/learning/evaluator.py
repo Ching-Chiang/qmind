@@ -64,7 +64,7 @@ class TradeEvaluator:
             hold_duration = f"{hours / 24:.1f}d"
 
         # MAE / MFE
-        if trade.highest_price and trade.lowest_price:
+        if trade.highest_price is not None and trade.lowest_price is not None:
             if trade.decision == "LONG":
                 mae = (trade.lowest_price - trade.entry_price) / trade.entry_price * 100
                 mfe = (trade.highest_price - trade.entry_price) / trade.entry_price * 100

@@ -7,7 +7,7 @@
 
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 
@@ -26,9 +26,9 @@ class TimeGuard:
     def check_timestamp(self, data_timestamp: int, label: str = "data") -> None:
         """检查 Unix ms 时间戳是否 <= 决策时间 + 容差"""
         data_dt = datetime.utcfromtimestamp(data_timestamp / 1000)
-        deadline = self.decision_time.timestamp() + self.tolerance_sec
-        if data_dt.timestamp() > deadline:
-            offset_sec = data_dt.timestamp() - self.decision_time.timestamp()
+        deadline = self.decision_time + timedelta(seconds=self.tolerance_sec)
+        if data_dt > deadline:
+            offset_sec = (data_dt - self.decision_time).total_seconds()
             raise TimeGuardError(
                 f"{label} 时间戳 {data_dt} 晚于决策时间 {self.decision_time} "
                 f"(偏差 {offset_sec:.0f}s, 容差 {self.tolerance_sec}s) — 涉嫌 Look-Ahead 偏差"
