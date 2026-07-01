@@ -82,8 +82,8 @@ def analyze(ctx: click.Context, symbol: str, timeframe: str, output: str | None)
         # 分析师共识
         console.print("\n[bold]分析师共识[/bold]")
         for a in analyses:
-            emoji = {"bullish": "🟢", "neutral": "⚪", "bearish": "🔴"}
-            console.print(f"  {emoji.get(a.stance, '⚪')} [{a.analyst}] {a.stance} ({a.confidence:.0%})")
+            icon = {"bullish": "[green]+[/]", "neutral": "[yellow]~[/]", "bearish": "[red]-[/]"}
+            console.print(f"  {icon.get(a.stance, '[yellow]~[/]')} [{a.analyst}] {a.stance} ({a.confidence:.0%})")
 
         # 分歧度
         console.print(f"\n  [dim]分歧度 δ={disagreement:.3f}")
@@ -102,8 +102,8 @@ def analyze(ctx: click.Context, symbol: str, timeframe: str, output: str | None)
 
         # 风控
         if risk:
-            status = "✅ 通过" if risk.approved else "❌ 否决"
-            veto = f" (否决: {', '.join(risk.vetoed_by)})" if risk.vetoed_by else ""
+            status = "[green]PASS[/]" if risk.approved else "[red]VETO[/]"
+            veto = f" (by: {', '.join(risk.vetoed_by)})" if risk.vetoed_by else ""
             console.print(f"\n[bold]风控审核: {status}{veto}[/bold]")
 
         # 执行
@@ -116,7 +116,7 @@ def analyze(ctx: click.Context, symbol: str, timeframe: str, output: str | None)
 
         # 错误
         for err in errors:
-            console.print(f"[red]⚠ {err}[/red]")
+            console.print(f"[red]! {err}[/red]")
 
         # 审计
         audit: AuditLogger = ctx.obj["audit"]
@@ -232,7 +232,7 @@ def learn(ctx: click.Context, log_path: str | None) -> None:
                 console.print("\n[green]最近教训:[/green]")
                 for entry in recent:
                     for lesson in entry.lessons:
-                        console.print(f"  📌 {lesson.lesson} ({lesson.confidence:.0%})")
+                        console.print(f"  > {lesson.lesson} ({lesson.confidence:.0%})")
             else:
                 console.print("[dim]暂无教训记录。运行分析交易后自动生成。[/dim]")
 

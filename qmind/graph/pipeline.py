@@ -143,12 +143,12 @@ class QMindPipeline:
                     confidence=0.9,
                     source="risk_control",
                 ))
-        if risk and risk.cvar_check and not risk.cvar_check.get("passed", True):
+        if risk and risk.cvar_check and not risk.cvar_check.passed:
             lessons.append(Lesson(
                 lesson=(
                     f"CVaR 硬约束未通过: "
-                    f"exposure={risk.cvar_check.get('current_cvar_exposure')} > "
-                    f"threshold={risk.cvar_check.get('threshold')}"
+                    f"exposure={risk.cvar_check.current_exposure} > "
+                    f"threshold={risk.cvar_check.cvar_threshold}"
                 ),
                 confidence=0.85,
                 source="cvar",
@@ -389,6 +389,10 @@ class QMindPipeline:
             market_context = self._format_market_context(market_data)
 
             if status in ("dry_run", "live"):
+                # 跳过 HOLD/零入场价的模拟交易
+                if decision.decision == "HOLD" or not decision.entry.get("price", 0):
+                    logger.info("learn: 跳过 CVRF (HOLD/零入场价)")
+                    return {"errors": []}
                 return await self._learn_from_execution(
                     decision, market_data, status,
                     analysis_summary, market_context,

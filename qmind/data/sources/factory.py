@@ -32,6 +32,9 @@ class DataSourceFactory:
             elif source == "tushare":
                 from qmind.data.sources.tushare_source import TushareSource
                 return await TushareSource().fetch_daily(symbol)
+            elif source == "mock":
+                from qmind.data.sources.mock_source import MockSource
+                return await MockSource().fetch_klines(symbol, interval=interval)
             else:
                 raise ValueError(f"Unsupported data source: {source}")
         except Exception as e:

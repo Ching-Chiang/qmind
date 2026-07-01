@@ -1,0 +1,17 @@
+# QMind 配置
+llm:
+  default_model: deepseek-chat
+  deepseek_api_key: "${DEEPSEEK_API_KEY}"
+
+execution:
+  dry_run: true
+  default_exchange: binance
+
+storage:
+  db_path: qmind.db
+
+logging:
+  level: INFO
+
+notification:
+  type: none

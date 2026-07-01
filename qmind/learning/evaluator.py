@@ -45,6 +45,14 @@ class TradeEvaluator:
 
     def evaluate(self, trade: TradeRecord) -> TradeEvaluation:
         """评估一笔交易的结果"""
+        # 保护：零入场价时返回空评估
+        if not trade.entry_price:
+            return TradeEvaluation(
+                pnl_abs=0.0, pnl_pct=0.0, hold_duration="0s",
+                mae=0.0, mfe=0.0, slippage=0.0,
+                execution_quality="no_trade",
+            )
+
         # PnL 计算
         if trade.decision == "LONG":
             pnl_abs = (trade.exit_price - trade.entry_price) * trade.position_size
