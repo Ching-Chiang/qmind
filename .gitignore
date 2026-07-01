@@ -36,26 +36,23 @@ logs/
 # Reports
 reports/
 
+# Coverage
+.coverage
+
 # QMind database
 qmind.db
 qmind.sqlite3
 
 # Large files (papers are large)
-# references/papers/ is kept in git (they're reference materials)
-# but individual PDFs > 50MB should be gitignored
-*.pdf
-!references/papers/*.pdf
-!paper/*.pdf
+# references/ is NOT tracked in git (reference materials stay local only)
+references/
 
-# Paper parsing intermediate artifacts (MCP mineru output)
-*_parsed/
-references/papers/*.txt
-references/papers/*.zip
-references/papers/images/
-
-# Paper outputs (keep source, ignore compiled artifacts)
+# Paper outputs (only keep compiled PDFs)
 paper/*.aux
 paper/*.log
 paper/*.out
+paper/*.tex
+paper/*.png
+paper/*.bbl
+paper/*.blg
 !paper/*.pdf
-!paper/*.tex
